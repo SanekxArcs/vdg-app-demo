@@ -37,10 +37,10 @@ export interface Material {
   name: string;
   description?: string;
   quantity: number;
-  unit: string;
+  Unit: string;
   priceNetto: number;
-  supplier?: string;
-  category: string;
+  Supplier?: string;
+  Category: string;
   minQuantity?: number;
   createdAt: Date;
   updatedAt: Date;
