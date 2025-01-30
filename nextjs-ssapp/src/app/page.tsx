@@ -4,10 +4,9 @@ import { type SanityDocument } from "next-sanity";
 
 import { client } from "./sanity/client";
 
-const POSTS_QUERY = `*[
-  _type == "post"
-  && defined(slug.current)
-]|order(publishedAt desc)[0...12]{_id, title, slug, publishedAt}`;
+export const POSTS_QUERY = defineQuery(`*[_type == "post" && defined(slug.current)][0...12]{
+  _id, title, slug
+}`)
 
 const options = { next: { revalidate: 30 } };
 
