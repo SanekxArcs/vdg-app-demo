@@ -44,12 +44,8 @@ export default function AddMaterialButton({
   });
 
   // State for Categories, Suppliers, and Units
-  const [categories, setCategories] = useState<{ _id: string; name: string }[]>(
-    []
-  );
-  const [suppliers, setSuppliers] = useState<{ _id: string; name: string }[]>(
-    []
-  );
+  const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
+  const [suppliers, setSuppliers] = useState<{ _id: string; name: string }[]>([]);
   const [units, setUnits] = useState<{ _id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -69,6 +65,22 @@ export default function AddMaterialButton({
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
 
+  const resetMaterial = () => {
+    setMaterial({
+      name: "",
+      description: "",
+      category: "",
+      supplier: "",
+      unit: "",
+      quantity: 0,
+      pieces: 1,
+      minQuantity: 5,
+      priceNetto: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -83,6 +95,7 @@ export default function AddMaterialButton({
       toast.success("Material added successfully!");
       setIsOpen(false);
       refreshMaterials(); // ✅ Refresh the materials list
+      resetMaterial(); // ✅ Reset the form fields
     } catch (error) {
       console.error("Sanity create error:", error);
       toast.error("Failed to add material.");
@@ -242,13 +255,18 @@ export default function AddMaterialButton({
                 onChange={(e) =>
                   setMaterial({
                     ...material,
-                    priceNetto: Number(e.target.value),
+                    priceNetto: Number(e.target.value.replace(",", ".")),
                   })
                 }
                 required
               />
             </div>
           </div>
+
+          {/* Clear Fields Button */}
+          <Button type="button" variant="outline" onClick={resetMaterial} className="w-full">
+            Clear Fields
+          </Button>
 
           {/* Submit Button */}
           <Button type="submit" className="w-full">

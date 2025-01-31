@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { client } from "@/sanity/client";
 import type { Material } from "@/sanity/types";
-import { Plus } from "lucide-react";
+import { Plus, ChevronUp, ChevronDown } from "lucide-react";
 import AddMaterialButton from "@/components/materials/AddMaterialButton";
 import EditMaterialDialog from "@/components/materials/EditMaterialDialog";
 import { toast } from "sonner";
@@ -45,17 +45,47 @@ export default function MaterialsPage() {
   const router = useRouter();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [editMaterialId, setEditMaterialId] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
-   const fetchMaterials = () => {
-     client
-       .fetch(DATA_QUERY)
-       .then((data) => setMaterials(data.materials))
-       .catch((error) => toast.error("Error fetching materials:", error));
-   };
+  const fetchMaterials = () => {
+    client
+      .fetch(DATA_QUERY)
+      .then((data) => setMaterials(data.materials))
+      .catch((error) => toast.error("Error fetching materials:", error));
+  };
 
-   useEffect(() => {
-     fetchMaterials();
-   }, []);
+  const sortedMaterials = [...materials].sort((a, b) => {
+    if (sortConfig !== null) {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+    }
+    return 0;
+  });
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return null;
+    }
+    return sortConfig.direction === 'asc' ? <ChevronUp className="inline-block ml-2" /> : <ChevronDown className="inline-block ml-2" />;
+  };
 
   return (
     <Layout>
@@ -72,17 +102,29 @@ export default function MaterialsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Last Update</TableHead>
+                <TableHead onClick={() => requestSort('name')}>
+                  Name {getSortIcon('name')}
+                </TableHead>
+                <TableHead onClick={() => requestSort('Category')}>
+                  Category {getSortIcon('Category')}
+                </TableHead>
+                <TableHead onClick={() => requestSort('Supplier')}>
+                  Supplier {getSortIcon('Supplier')}
+                </TableHead>
+                <TableHead onClick={() => requestSort('quantity')}>
+                  Quantity {getSortIcon('quantity')}
+                </TableHead>
+                <TableHead onClick={() => requestSort('priceNetto')}>
+                  Price {getSortIcon('priceNetto')}
+                </TableHead>
+                <TableHead onClick={() => requestSort('updatedAt')}>
+                  Last Update {getSortIcon('updatedAt')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {materials.length > 0 ? (
-                materials.map((material) => (
+              {sortedMaterials.length > 0 ? (
+                sortedMaterials.map((material) => (
                   <TableRow
                     className="cursor-pointer"
                     key={material._id}
