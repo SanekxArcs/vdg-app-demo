@@ -32,6 +32,14 @@ export type SanityImagePalette = {
   muted?: SanityImagePaletteSwatch;
 };
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  image?: string;
+}
+
+
 export interface Material {
   id: string;
   name: string;
@@ -44,6 +52,48 @@ export interface Material {
   minQuantity?: number;
   createdAt: Date;
   updatedAt: Date;
+}
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status: "planned" | "in-progress" | "completed" | "on-hold";
+  startDate: Date;
+  endDate?: Date;
+  budget?: number;
+  materials: ProjectMaterial[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProjectMaterial {
+  materialId: string;
+  quantity: number;
+  allocatedBudget?: number;
+}
+
+export interface Settings {
+  id: string;
+  userId: string;
+  theme: "light" | "dark" | "system";
+  notifications: {
+    email: boolean;
+    push: boolean;
+    lowStock: boolean;
+    projectUpdates: boolean;
+  };
+  currency: string;
+  language: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: "info" | "warning" | "error" | "success";
+  read: boolean;
+  createdAt: Date;
 }
 
 

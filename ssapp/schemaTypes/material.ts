@@ -28,22 +28,22 @@ export default defineType({
     defineField({
       name: 'unit',
       title: 'Unit',
-      type: 'reference', 
-      to: [{type: 'pieceType'}]
+      type: 'reference',
+      to: [{type: 'pieceType'}],
     }),
     defineField({name: 'priceNetto', title: 'Price Netto', type: 'number'}),
-    
+
     defineField({
       name: 'supplier',
       title: 'Supplier',
-      type: 'reference', 
-      to: [{type: 'supplier'}]
+      type: 'reference',
+      to: [{type: 'supplier'}],
     }),
     defineField({
       name: 'category',
       title: 'Category',
       description: 'Material category',
-      type: 'reference', 
+      type: 'reference',
       to: [{type: 'category'}],
     }),
     defineField({
@@ -54,12 +54,12 @@ export default defineType({
       type: 'number',
     }),
     defineField({
-  name: 'createdAt',
-  title: 'Created At',
-  type: 'datetime',
-  initialValue: () => new Date().toISOString(), // Auto-set to current date & time
-  readOnly: true, // Prevent manual editing
-}),
-    defineField({name: 'updatedAt', title: 'Updated At', type: 'datetime'}),
+      name: 'createdAt',
+      title: 'Created At',
+      type: 'datetime',
+      initialValue: () => new Date().toISOString(), // Auto-set to current date & time
+      readOnly: true, // Prevent manual editing
+    }),
+    defineField({name: 'updatedAt', title: 'Updated At', type: 'datetime', readOnly: true}),
   ],
 })
