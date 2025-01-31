@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { client } from "@/sanity/client";
 import type { Material } from "@/sanity/types";
-import { Plus, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, ArrowDownAZ, ArrowDownZA, ArrowDown01, ArrowDown10 } from "lucide-react";
 import AddMaterialButton from "@/components/materials/AddMaterialButton";
 import EditMaterialDialog from "@/components/materials/EditMaterialDialog";
 import { toast } from "sonner";
@@ -81,10 +81,22 @@ export default function MaterialsPage() {
   }, []);
 
   const getSortIcon = (key: string) => {
-    if (!sortConfig || sortConfig.key !== key) {
-      return null;
+    const isActive = sortConfig && sortConfig.key === key;
+    const color = isActive ? "text-black" : "text-gray-400";
+
+    if (key === 'name' || key === 'Category' || key === 'Supplier') {
+      return sortConfig?.direction === "asc" ? (
+        <ArrowDownAZ className={`inline-block cursor-pointer ml-2 ${color}`} />
+      ) : (
+        <ArrowDownZA className={`inline-block cursor-pointer ml-2 ${color}`} />
+      );
+    } else {
+      return sortConfig?.direction === "asc" ? (
+        <ArrowDown01 className={`inline-block cursor-pointer ml-2 ${color}`} />
+      ) : (
+        <ArrowDown10 className={`inline-block cursor-pointer ml-2 ${color}`} />
+      );
     }
-    return sortConfig.direction === 'asc' ? <ChevronUp className="inline-block ml-2" /> : <ChevronDown className="inline-block ml-2" />;
   };
 
   return (

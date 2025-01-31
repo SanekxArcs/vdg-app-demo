@@ -83,6 +83,11 @@ export default function MaterialDetailsPage() {
     }
   };
 
+  const handleClickSaveAndBack = () => {
+    handleUpdate();
+    router.push("/materials");
+  };
+
   const handleDelete = async () => {
     try {
       await client.delete(id);
@@ -268,6 +273,15 @@ export default function MaterialDetailsPage() {
           >
             <Save size={16} />
             Save
+          </Button>
+          {/* Save Button (White with Black Border, Green on Hover) */}
+          <Button
+            onClick={handleClickSaveAndBack}
+            variant="outline"
+            className="flex items-center gap-2 bg-white text-black hover:bg-green-500 hover:text-white"
+          >
+            <Save size={16} />
+            Save and Back <ArrowLeft size={16} />
           </Button>
 
           {/* Delete Button (Black with White Text, Red on Hover) */}

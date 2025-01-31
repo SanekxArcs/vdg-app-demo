@@ -243,6 +243,13 @@ export default function EditMaterialDialog({
               Save
             </Button>
             <Button
+              onClick={handleSaveAndGoBack}
+              className="bg-white text-black border border-black hover:bg-blue-500"
+            >
+              <Save size={16} />
+              Save and Go Back
+            </Button>
+            <Button
               onClick={handleDelete}
               className="bg-black text-white hover:bg-red-500"
             >
@@ -255,3 +262,10 @@ export default function EditMaterialDialog({
     </Dialog>
   );
 }
+
+// Add the new handler function
+const handleSaveAndGoBack = () => {
+  handleUpdate();
+  // Add navigation logic here, for example:
+  router.push('/materials');
+};

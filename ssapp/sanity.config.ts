@@ -2,6 +2,7 @@ import {defineConfig} from 'sanity'
 import {structureTool} from 'sanity/structure'
 import {visionTool} from '@sanity/vision'
 import {schemaTypes} from './schemaTypes'
+import { UpdateTotalBudgetAction } from './components/documentActions'
 
 export default defineConfig({
   name: 'default',
@@ -15,5 +16,12 @@ export default defineConfig({
   schema: {
     types: schemaTypes,
   },
-  
+  document: {
+    actions: (prev, { schemaType }) => {
+      if (schemaType === 'project') {
+        return [...prev, UpdateTotalBudgetAction] // Add custom action to projects
+      }
+      return prev
+    },
+  },
 })
