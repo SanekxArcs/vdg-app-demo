@@ -17,16 +17,23 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { nanoid } from "nanoid";
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 
 import { client } from "@/sanity/client";
 
-// A small helper to build a reference object for Sanity
+// A small helper to build references
 function buildReference(_id: string) {
   return { _type: "reference", _ref: _id };
 }
 
-// For holding each reference doc from Sanity
+// For reference docs from Sanity
 type SanityRef = {
   _id: string;
   name: string;
@@ -34,8 +41,8 @@ type SanityRef = {
 
 // For timeline local state
 interface TimelineEvent {
-  time: string; // a string date/time
-  comment: string; // text comment
+  time: string;
+  comment: string;
 }
 
 // For additional costs local state
@@ -44,81 +51,110 @@ interface AdditionalCost {
   amount: number;
 }
 
+// For material documents from your `material` schema
+interface MaterialDoc {
+  _id: string;
+  name: string;
+  priceNetto: number;
+  quantity: number; // total available in the warehouse, etc.
+  pieces: number;
+  unitName?: string; // "unit->name" after GROQ expansion
+}
+
+// For the quantity that user wants to allocate to THIS project
+interface MaterialQuantity {
+  materialId: string;
+  quantity: number; // how many user decides to add to the project
+}
+
 export default function NewProjectPage() {
   const router = useRouter();
-
-  // Loading state for submission
   const [isLoading, setIsLoading] = useState(false);
 
-  // Each array of documents (type, status, firm, ekipa)
+  // Arrays for references
   const [types, setTypes] = useState<SanityRef[]>([]);
   const [statuses, setStatuses] = useState<SanityRef[]>([]);
   const [firms, setFirms] = useState<SanityRef[]>([]);
   const [ekipas, setEkipas] = useState<SanityRef[]>([]);
 
-  // User’s choice (ID) for each reference
+  // Selected references
   const [selectedType, setSelectedType] = useState("none");
   const [selectedStatus, setSelectedStatus] = useState("none");
   const [selectedFirm, setSelectedFirm] = useState("none");
   const [selectedEkipa, setSelectedEkipa] = useState("none");
 
-  // Basic form fields for the project
+  // Project fields
   const [formData, setFormData] = useState({
-    mpk: "", // number
-    city: "", // string
-    address: "", // string
-    postal: "", // string (Polish postal code)
-    idq: "", // number (Firm code)
+    mpk: "",
+    city: "",
+    address: "",
+    postal: "",
+    idq: "",
     startDate: "",
     endDate: "",
     deadlineDate: "",
     description: "",
   });
 
-  // Timeline local state
+  // Timeline events
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
-  // For new “in-progress” timeline entry
   const [timelineDraft, setTimelineDraft] = useState<TimelineEvent>({
     time: "",
     comment: "",
   });
 
-  // Additional costs local state
+  // Additional costs
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>([]);
-  // For new “in-progress” cost entry
   const [costDraft, setCostDraft] = useState<AdditionalCost>({
     description: "",
     amount: 0,
   });
 
+  // Materials from Sanity
+  const [allMaterials, setAllMaterials] = useState<MaterialDoc[]>([]);
+  // How many of each material the user wants to add to this project
+  const [materialQuantities, setMaterialQuantities] = useState<
+    MaterialQuantity[]
+  >([]);
+
   // ------------------------------
-  // 1) Fetch data for references
+  // 1) Fetch references + materials
   // ------------------------------
   useEffect(() => {
-    // One GROQ query returning four lists:
     const query = groq`
       {
         "types": *[_type == "typ"]{_id, name},
         "statuses": *[_type == "status"]{_id, name},
         "firms": *[_type == "firm"]{_id, name},
-        "ekipas": *[_type == "ekipa"]{_id, name}
+        "ekipas": *[_type == "ekipa"]{_id, name},
+        "materials": *[_type == "material"]{
+          _id,
+          name,
+          priceNetto,
+          quantity,
+          pieces,
+          "unitName": unit->name
+        } | order(_createdAt desc)
       }
     `;
     client
       .fetch(query)
       .then((data) => {
+        // References
         setTypes(data.types || []);
         setStatuses(data.statuses || []);
         setFirms(data.firms || []);
         setEkipas(data.ekipas || []);
+        // Materials
+        setAllMaterials(data.materials || []);
       })
-      .catch((err) => console.error("Error fetching reference docs:", err));
+      .catch((err) => console.error("Error fetching data:", err));
   }, []);
 
   // ------------------------------
   // 2) Handlers
   // ------------------------------
-  // Update the non-reference text/number fields
+  // Basic form
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -126,23 +162,20 @@ export default function NewProjectPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handler to add an event to the timeline
+  // Add a timeline event
   const handleAddTimelineEvent = () => {
     if (!timelineDraft.time || !timelineDraft.comment) {
       alert("Please provide both time and comment for the event.");
       return;
     }
     setTimelineEvents((prev) => [...prev, timelineDraft]);
-    // Reset the draft
     setTimelineDraft({ time: "", comment: "" });
   };
-
-  // Handler to remove an event from the timeline
   const handleRemoveTimelineEvent = (index: number) => {
     setTimelineEvents((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Handler to add an additional cost
+  // Additional cost
   const handleAddCost = () => {
     if (!costDraft.description || !costDraft.amount) {
       alert("Please provide cost description and amount.");
@@ -151,10 +184,57 @@ export default function NewProjectPage() {
     setAdditionalCosts((prev) => [...prev, costDraft]);
     setCostDraft({ description: "", amount: 0 });
   };
-
-  // Handler to remove an additional cost
   const handleRemoveCost = (index: number) => {
     setAdditionalCosts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Materials
+  const handleQuantityChange = (materialId: string, val: string) => {
+    const quantity = val === "" ? 0 : parseInt(val, 10);
+    setMaterialQuantities((prev) => {
+      const existing = prev.find((mq) => mq.materialId === materialId);
+      if (existing) {
+        return prev.map((mq) =>
+          mq.materialId === materialId ? { ...mq, quantity } : mq
+        );
+      }
+      return [...prev, { materialId, quantity }];
+    });
+  };
+
+  const getQuantity = (materialId: string): string => {
+    const found = materialQuantities.find((mq) => mq.materialId === materialId);
+    return found ? String(found.quantity) : "";
+  };
+
+  // Calculate a simple "Subtotal" of how many the user wants times the price
+const calcMaterialSubtotal = (material: MaterialDoc) => {
+  // How many items the user wants
+  const quantity = parseInt(getQuantity(material._id), 10) || 0;
+
+  // Avoid dividing by 0
+  const pieceCount = material.pieces || 1;
+
+  // “Unit cost” = priceNetto / pieces
+  const unitCost = material.priceNetto / pieceCount;
+
+  // Subtotal = unitCost * quantity
+  return unitCost * quantity;
+};
+
+  // Calculate total budget from chosen materials + additional costs, for example
+  const calculateBudget = () => {
+    // Materials
+    let materialsSum = 0;
+    for (const mat of allMaterials) {
+      materialsSum += calcMaterialSubtotal(mat);
+    }
+    // Additional costs
+    let costsSum = 0;
+    for (const cost of additionalCosts) {
+      costsSum += cost.amount;
+    }
+    return materialsSum + costsSum;
   };
 
   // ------------------------------
@@ -165,19 +245,45 @@ export default function NewProjectPage() {
     setIsLoading(true);
 
     try {
-      // Build a new `project` doc
+      // Build timeline array with _key
+      // We'll use a small function for unique keys:
+      const nanoid = () => Math.random().toString(36).slice(2);
+
+      const timelineWithKeys = timelineEvents.map((ev) => ({
+        _key: nanoid(),
+        _type: "event",
+        time: ev.time || null,
+        comment: ev.comment || "",
+      }));
+
+      // Additional costs array with _key
+      const costsWithKeys = additionalCosts.map((cost) => ({
+        _key: nanoid(),
+        _type: "object",
+        description: cost.description,
+        amount: cost.amount,
+      }));
+
+      // Materials array: only items with quantity > 0
+      // with `_key` for each item:
+      const usedMaterials = materialQuantities
+        .filter((mq) => mq.quantity > 0)
+        .map((mq) => ({
+          _key: nanoid(),
+          _type: "usedMaterial",
+          material: buildReference(mq.materialId),
+          quantity: mq.quantity,
+        }));
+
+      // Build final doc
       const newProjectDoc = {
         _type: "project",
-        // numeric
+        // Basic fields
         number: Number(formData.mpk) || 0,
-        // string fields
         city: formData.city,
         address: formData.address,
         postal: formData.postal,
-        // firm code
         idq: Number(formData.idq) || 0,
-
-        // dates => convert to ISO if they exist
         startDate: formData.startDate
           ? new Date(formData.startDate).toISOString()
           : null,
@@ -187,11 +293,9 @@ export default function NewProjectPage() {
         deadlineDate: formData.deadlineDate
           ? new Date(formData.deadlineDate).toISOString()
           : null,
-
-        // any custom fields (e.g. "description" if your schema has it)
         description: formData.description || "",
 
-        // references: only store if user didn’t pick “none”
+        // references
         type:
           selectedType !== "none" ? buildReference(selectedType) : undefined,
         status:
@@ -203,31 +307,24 @@ export default function NewProjectPage() {
         ekipa:
           selectedEkipa !== "none" ? buildReference(selectedEkipa) : undefined,
 
-        // timeline array
-        timeline: timelineEvents.map((ev) => ({
-          _key: nanoid(),
-          _type: "event", // matches the "type" field in your schema
-          time: ev.time || null,
-          comment: ev.comment || "",
-        })),
+        // timeline, additionalCosts, materials
+        timeline: timelineWithKeys,
+        additionalCosts: costsWithKeys,
+        materials: usedMaterials,
 
-        // additionalCosts array
-        additionalCosts: additionalCosts.map((cost) => ({
-          _key: nanoid(),
-          _type: "object", // or you can name it something else
-          description: cost.description,
-          amount: cost.amount,
-        })),
+        // totalBudget if you want to store it
+        totalBudget: calculateBudget(),
       };
 
       const createdDoc = await client.create(newProjectDoc);
       console.log("Project created in Sanity:", createdDoc);
       router.push("/projects");
     } catch (error) {
-      console.error("Error creating project in Sanity:", error);
+      console.error("Error creating project:", error);
       setIsLoading(false);
     }
   };
+
   // ------------------------------
   // 4) JSX
   // ------------------------------
@@ -240,7 +337,7 @@ export default function NewProjectPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* Project Info */}
+            {/* Project Base Info */}
             <Card>
               <CardHeader>
                 <CardTitle>Project Details</CardTitle>
@@ -442,77 +539,50 @@ export default function NewProjectPage() {
               </CardContent>
             </Card>
 
-            {/* Additional Costs Card */}
+            {/* Materials Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Additional Costs</CardTitle>
+                <CardTitle>Materials</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Draft fields for new cost */}
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      type="text"
-                      placeholder="Cost description"
-                      value={costDraft.description}
-                      onChange={(e) =>
-                        setCostDraft((prev) => ({
-                          ...prev,
-                          description: e.target.value,
-                        }))
-                      }
-                    />
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      value={costDraft.amount || ""}
-                      onChange={(e) =>
-                        setCostDraft((prev) => ({
-                          ...prev,
-                          amount: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                    />
-                    <Button type="button" onClick={handleAddCost}>
-                      Add Cost
-                    </Button>
-                  </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Price Netto</TableHead>
+                      <TableHead>Stored Qty</TableHead>
+                      <TableHead>Project Qty</TableHead>
+                      <TableHead>Subtotal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allMaterials.map((mat) => {
+                      const projectQty =
+                        parseInt(getQuantity(mat._id), 10) || 0;
+                      const subtotal = calcMaterialSubtotal(mat);
 
-                  {/* List of existing costs */}
-                  {additionalCosts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No additional costs added
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {additionalCosts.map((c, idx) => (
-                        <li
-                          key={idx}
-                          className="flex items-center justify-between border p-2 rounded"
-                        >
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">
-                              {c.description}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {c.amount.toFixed(2)} zl
-                            </p>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            type="button"
-                            size="sm"
-                            onClick={() => handleRemoveCost(idx)}
-                          >
-                            Remove
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                      return (
+                        <TableRow key={mat._id}>
+                          <TableCell>{mat.name}</TableCell>
+                          <TableCell>{mat.priceNetto.toFixed(2)} zl <span className=" text-gray-400 text-xs">x {mat.pieces}</span> </TableCell>
+                          <TableCell>{mat.quantity} {mat.unitName || "N/A"}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0"
+                              className="w-20"
+                              value={String(projectQty)}
+                              onChange={(e) =>
+                                handleQuantityChange(mat._id, e.target.value)
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>{subtotal.toFixed(2)} zl</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
 
@@ -523,7 +593,6 @@ export default function NewProjectPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Draft fields for new event */}
                   <div className="flex items-center space-x-2">
                     <Input
                       type="datetime-local"
@@ -550,8 +619,6 @@ export default function NewProjectPage() {
                       Add Event
                     </Button>
                   </div>
-
-                  {/* List of existing events */}
                   {timelineEvents.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       No timeline events added
@@ -586,9 +653,91 @@ export default function NewProjectPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Additional Costs Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Additional Costs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="text"
+                      placeholder="Cost description"
+                      value={costDraft.description}
+                      onChange={(e) =>
+                        setCostDraft((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                    />
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      value={costDraft.amount || ""}
+                      onChange={(e) =>
+                        setCostDraft((prev) => ({
+                          ...prev,
+                          amount: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                    <Button type="button" onClick={handleAddCost}>
+                      Add Cost
+                    </Button>
+                  </div>
+                  {additionalCosts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No additional costs added
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {additionalCosts.map((c, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-center justify-between border p-2 rounded"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">
+                              {c.description}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              ${c.amount.toFixed(2)}
+                            </p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            type="button"
+                            size="sm"
+                            onClick={() => handleRemoveCost(idx)}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Show a Calculated Budget from materials + additional costs */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Calculated Total Budget</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-lg font-semibold">
+                  ${calculateBudget().toFixed(2)}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Buttons */}
           <div className="mt-4 flex justify-end space-x-2">
             <Button
               variant="outline"
