@@ -1,10 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { groq } from "next-sanity";
+import Link from "next/link";
+
 import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
-import Link from "next/link";
+import { MapPin, Plus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,28 +23,91 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Project } from "@/types";
+import { toast } from "sonner";
 
-const projects: Project[] = [
-  {
-    id: "1",
-    name: "Building A Construction",
-    description: "Main construction project for Building A",
-    status: "in-progress",
-    startDate: new Date("2024-01-01"),
-    endDate: new Date("2024-06-30"),
-    budget: 500000,
-    materials: [],
-    createdAt: new Date("2023-12-15"),
-    updatedAt: new Date("2024-03-10"),
-  },
- 
-];
+// Імпортуйте налаштований клієнт Sanity (приклад):
+import { client } from "@/sanity/client";
+
+// Тип для проєкту (пристосуйте під свої поля)
+type Project = {
+  id: string;
+  mpk: number;
+  name: string;
+  address: string;
+  postal: string;
+  firm: string;
+  firmCode: number;
+  type: string;
+  status: string;
+  endDate?: string;
+  deadline?: string;
+};
 
 export default function ProjectsPage() {
+  // Стан для масиву проєктів
+  const [projects, setProjects] = useState<Project[]>([]);
+  // ОКРЕМІ стани для фільтра за статусом і фільтра за фірмою
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedFirm, setSelectedFirm] = useState<string>("all");
+  // Стан для пошуку
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // GROQ-запит, який завантажує список проєктів.
+  // Змінюйте поля згідно зі своєю схемою:
+  const query = groq`
+    *[_type == "project"] {
+      "id": _id,
+      "mpk": number,
+      "name": city,
+      "address": address,
+      "postal": postal,
+      "firmCode": idq,
+      "type": type->name,
+      "status": status->name,
+      "firm": firm->name,
+      "deadline": deadlineDate,
+    } | order(_createdAt desc)
+  `;
+
+  // Завантаження даних з Sanity
+  const fetchProjects = async () => {
+    try {
+      const data = await client.fetch(query);
+      setProjects(data);
+      toast.success("Projects loaded successfully.");
+    } catch (error) {
+      toast.error("Error fetching projects:", error);
+      console.error("Помилка при завантаженні проєктів:", error);
+    }
+  };
+
+  // Викликаємо fetchProjects при монтуванні компонента
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  // Фільтрація списку проєктів
+  const filteredProjects = projects.filter((project) => {
+    // Порівняння статусу
+    const matchesStatus =
+      selectedStatus === "all" || project.status === selectedStatus;
+
+    // Фільтрація за фірмою
+    const matchesFirm = selectedFirm === "all" || project.firm === selectedFirm;
+
+    // Пошук (назва або MPK)
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch =
+      project.name.toLowerCase().includes(searchLower) ||
+      String(project.mpk).includes(searchQuery);
+
+    return matchesStatus && matchesFirm && matchesSearch;
+  });
+
   return (
     <Layout>
       <div className="flex-1 space-y-4 p-8 pt-6">
+        {/* Заголовок сторінки й кнопка створення нового проєкту */}
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Projects</h2>
           <Link href="/projects/new">
@@ -51,80 +117,146 @@ export default function ProjectsPage() {
             </Button>
           </Link>
         </div>
+
+        {/* Поле пошуку та селект для статусу та фірми */}
         <div className="flex items-center space-x-2">
-          <Input placeholder="Search projects..." className="max-w-sm" />
-          <Select>
+          <Input
+            placeholder="Search projects..."
+            className="max-w-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          {/* Перший селект – статус */}
+          <Select onValueChange={(val) => setSelectedStatus(val)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="planned">Planned</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="on-hold">On Hold</SelectItem>
+              <SelectItem value="Planned">Planned</SelectItem>
+              <SelectItem value="In progress">In Progress</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
+              <SelectItem value="On Hold">On Hold</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Другий селект – фірма */}
+          <Select onValueChange={(val) => setSelectedFirm(val)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Firm" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="Biedronka">Biedronka</SelectItem>
+              <SelectItem value="Aldi">Aldi</SelectItem>
+              <SelectItem value="Quanta Energy">Quanta Energy</SelectItem>
+              <SelectItem value="Inne">Inne</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {/* Таблиця з проєктами */}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>MPK №</TableHead>
+                <TableHead>Address</TableHead>
+                <TableHead>Firm</TableHead>
+                <TableHead>Firm ID</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead>Budget</TableHead>
-                <TableHead>Progress</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {projects.map((project) => (
-                <TableRow key={project.id}>
-                  <TableCell>
-                    <Link
-                      href={`/projects/${project.id}`}
-                      className="text-blue-600 hover:underline"
+              {filteredProjects.map((project) => {
+                // Колонка MPK № з індикацією дедлайну (кольорова смужка)
+                let textColorClass = "border-gray-300";
+                if (project.deadline) {
+                  const deadlineDate = new Date(project.deadline);
+                  const now = new Date();
+                  const diffInMs = deadlineDate.getTime() - now.getTime();
+                  const diffInDays = Math.floor(
+                    diffInMs / (1000 * 60 * 60 * 24)
+                  );
+
+                  if (diffInDays < 0) {
+                    textColorClass = "border-red-600";
+                  } else if (diffInDays <= 3) {
+                    textColorClass = "border-orange-600";
+                  } else {
+                    textColorClass = "border-green-600";
+                  }
+                }
+
+                return (
+                  <TableRow key={project.id}>
+                    <TableCell className={`border-l-4 ${textColorClass}`}>
+                      {project.mpk}
+                    </TableCell>
+
+                    {/* Адреса, клік для відриття в Google Maps */}
+                    <TableCell
+                      onClick={() =>
+                        window.open(
+                          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            `${project.postal}, ${project.name}, ${project.address}`
+                          )}`,
+                          "_blank"
+                        )
+                      }
+                      className="cursor-pointer"
                     >
-                      {project.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <div
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
-                      ${
-                        project.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : project.status === "in-progress"
-                          ? "bg-blue-100 text-blue-800"
-                          : project.status === "on-hold"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {project.status.charAt(0).toUpperCase() +
-                        project.status.slice(1)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {project.startDate.toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    {project.endDate?.toLocaleDateString() || "TBD"}
-                  </TableCell>
-                  <TableCell>
-                    ${project.budget?.toLocaleString() || "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div className="flex items-center group">
+                        <MapPin className="h-5 w-5 mr-2 opacity-0 transition-all group-hover:opacity-100" />
+                        {project.postal} {project.name}, {project.address}
+                      </div>
+                    </TableCell>
+
+                    <TableCell>{project.firm}</TableCell>
+                    <TableCell>{project.firmCode}</TableCell>
+                    <TableCell>{project.type}</TableCell>
+
+                    <TableCell>
                       <div
-                        className="bg-blue-600 h-2.5 rounded-full"
-                        style={{ width: "45%" }}
-                      ></div>
-                    </div>
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                            ${
+                              project.status === "Completed"
+                                ? "bg-green-100 text-green-800"
+                                : project.status === "In progress"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : project.status === "On Hold"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : project.status === "Planned"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-gray-50 text-gray-600"
+                            }`}
+                      >
+                        {project.status}
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <Link href={`/projects/${project.id}`}>
+                        <Button variant="outline" className="hover:bg-gray-300">
+                          Edit
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+
+              {/* Якщо немає результатів після фільтра */}
+              {filteredProjects.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-6">
+                    No projects found.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>
