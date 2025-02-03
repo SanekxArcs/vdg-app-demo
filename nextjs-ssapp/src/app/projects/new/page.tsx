@@ -17,6 +17,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { nanoid } from "nanoid";
 
 import { client } from "@/sanity/client";
 
@@ -30,6 +31,18 @@ type SanityRef = {
   _id: string;
   name: string;
 };
+
+// For timeline local state
+interface TimelineEvent {
+  time: string; // a string date/time
+  comment: string; // text comment
+}
+
+// For additional costs local state
+interface AdditionalCost {
+  description: string;
+  amount: number;
+}
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -60,6 +73,22 @@ export default function NewProjectPage() {
     endDate: "",
     deadlineDate: "",
     description: "",
+  });
+
+  // Timeline local state
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  // For new “in-progress” timeline entry
+  const [timelineDraft, setTimelineDraft] = useState<TimelineEvent>({
+    time: "",
+    comment: "",
+  });
+
+  // Additional costs local state
+  const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>([]);
+  // For new “in-progress” cost entry
+  const [costDraft, setCostDraft] = useState<AdditionalCost>({
+    description: "",
+    amount: 0,
   });
 
   // ------------------------------
@@ -95,6 +124,37 @@ export default function NewProjectPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handler to add an event to the timeline
+  const handleAddTimelineEvent = () => {
+    if (!timelineDraft.time || !timelineDraft.comment) {
+      alert("Please provide both time and comment for the event.");
+      return;
+    }
+    setTimelineEvents((prev) => [...prev, timelineDraft]);
+    // Reset the draft
+    setTimelineDraft({ time: "", comment: "" });
+  };
+
+  // Handler to remove an event from the timeline
+  const handleRemoveTimelineEvent = (index: number) => {
+    setTimelineEvents((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Handler to add an additional cost
+  const handleAddCost = () => {
+    if (!costDraft.description || !costDraft.amount) {
+      alert("Please provide cost description and amount.");
+      return;
+    }
+    setAdditionalCosts((prev) => [...prev, costDraft]);
+    setCostDraft({ description: "", amount: 0 });
+  };
+
+  // Handler to remove an additional cost
+  const handleRemoveCost = (index: number) => {
+    setAdditionalCosts((prev) => prev.filter((_, i) => i !== index));
   };
 
   // ------------------------------
@@ -143,9 +203,21 @@ export default function NewProjectPage() {
         ekipa:
           selectedEkipa !== "none" ? buildReference(selectedEkipa) : undefined,
 
-        // materials, timeline, etc. if your schema requires them:
-        // materials: [],
-        // timeline: [],
+        // timeline array
+        timeline: timelineEvents.map((ev) => ({
+          _key: nanoid(),
+          _type: "event", // matches the "type" field in your schema
+          time: ev.time || null,
+          comment: ev.comment || "",
+        })),
+
+        // additionalCosts array
+        additionalCosts: additionalCosts.map((cost) => ({
+          _key: nanoid(),
+          _type: "object", // or you can name it something else
+          description: cost.description,
+          amount: cost.amount,
+        })),
       };
 
       const createdDoc = await client.create(newProjectDoc);
@@ -156,7 +228,6 @@ export default function NewProjectPage() {
       setIsLoading(false);
     }
   };
-
   // ------------------------------
   // 4) JSX
   // ------------------------------
@@ -169,6 +240,7 @@ export default function NewProjectPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
+            {/* Project Info */}
             <Card>
               <CardHeader>
                 <CardTitle>Project Details</CardTitle>
@@ -226,7 +298,7 @@ export default function NewProjectPage() {
                   />
                 </div>
 
-                {/* Firm Code (idq) */}
+                {/* Firm Code */}
                 <div className="space-y-1">
                   <Label htmlFor="idq">Firm Code</Label>
                   <Input
@@ -238,7 +310,7 @@ export default function NewProjectPage() {
                   />
                 </div>
 
-                {/* Description (optional) */}
+                {/* Description */}
                 <div className="space-y-1">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -366,6 +438,151 @@ export default function NewProjectPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Additional Costs Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Additional Costs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Draft fields for new cost */}
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="text"
+                      placeholder="Cost description"
+                      value={costDraft.description}
+                      onChange={(e) =>
+                        setCostDraft((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                    />
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      value={costDraft.amount || ""}
+                      onChange={(e) =>
+                        setCostDraft((prev) => ({
+                          ...prev,
+                          amount: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                    <Button type="button" onClick={handleAddCost}>
+                      Add Cost
+                    </Button>
+                  </div>
+
+                  {/* List of existing costs */}
+                  {additionalCosts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No additional costs added
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {additionalCosts.map((c, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-center justify-between border p-2 rounded"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">
+                              {c.description}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {c.amount.toFixed(2)} zl
+                            </p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            type="button"
+                            size="sm"
+                            onClick={() => handleRemoveCost(idx)}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Timeline Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Timeline Events</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Draft fields for new event */}
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="datetime-local"
+                      value={timelineDraft.time}
+                      onChange={(e) =>
+                        setTimelineDraft((prev) => ({
+                          ...prev,
+                          time: e.target.value,
+                        }))
+                      }
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Comment"
+                      value={timelineDraft.comment}
+                      onChange={(e) =>
+                        setTimelineDraft((prev) => ({
+                          ...prev,
+                          comment: e.target.value,
+                        }))
+                      }
+                    />
+                    <Button type="button" onClick={handleAddTimelineEvent}>
+                      Add Event
+                    </Button>
+                  </div>
+
+                  {/* List of existing events */}
+                  {timelineEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No timeline events added
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {timelineEvents.map((ev, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-center justify-between border p-2 rounded"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">
+                              {ev.time || "No date"}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {ev.comment}
+                            </p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            type="button"
+                            size="sm"
+                            onClick={() => handleRemoveTimelineEvent(idx)}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </CardContent>
             </Card>
