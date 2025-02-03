@@ -183,6 +183,14 @@ export default defineType({
         },
       ],
     }),
+    // totalCost
+    defineField({
+      name: 'totalBudget',
+      title: 'Total Cost',
+      description: 'Total budget for the project',
+      type: 'number',
+      readOnly: true,
+    }),
   ],
 
   preview: {

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Layout } from "@/components/layout/layout";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,14 +11,42 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import { client } from "@/sanity/client";
-import type { Material } from "@/sanity/types";
-import { Plus, ArrowDownAZ, ArrowDownZA, ArrowDown01, ArrowDown10 } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ArrowDownZA,
+  ArrowDown01,
+  ArrowDown10,
+} from "lucide-react";
 import AddMaterialButton from "@/components/materials/AddMaterialButton";
-import EditMaterialDialog from "@/components/materials/EditMaterialDialog";
 import { toast } from "sonner";
 import MaterialsDashboard from "@/components/materials/MaterialsDashboard";
 
+/** Material interface that matches your GROQ query fields */
+interface Material {
+  _id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  pieces: number;
+  Unit: string; // from unit->name
+  priceNetto: number;
+  Supplier: string; // supplier->name
+  Category: string; // category->name
+  minQuantity?: number;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+/** The keys we allow sorting on */
+type SortableKey =
+  | "name"
+  | "Category"
+  | "Supplier"
+  | "quantity"
+  | "priceNetto"
+  | "updatedAt";
 
 const DATA_QUERY = `{
   "materials": *[_type == "material"] {
@@ -28,9 +55,9 @@ const DATA_QUERY = `{
     description,
     quantity,
     pieces,
-    "Unit": unit->name,          
+    "Unit": unit->name,
     priceNetto,
-    "Supplier": supplier->name,  
+    "Supplier": supplier->name,
     "Category": category->name,
     minQuantity,
     createdAt,
@@ -44,60 +71,95 @@ const DATA_QUERY = `{
 export default function MaterialsPage() {
   const router = useRouter();
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [editMaterialId, setEditMaterialId] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
+  // Sort config stores which key we sort by and direction
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortableKey;
+    direction: "asc" | "desc";
+  } | null>(null);
+
+  /** Fetch all materials */
   const fetchMaterials = () => {
     client
-      .fetch(DATA_QUERY)
+      .fetch<{ materials: Material[] }>(DATA_QUERY)
       .then((data) => setMaterials(data.materials))
-      .catch((error) => toast.error("Error fetching materials:", error));
+      .catch((error) => {
+        console.error("Error fetching materials:", error);
+        toast.error("Error fetching materials. See console for details.");
+      });
   };
 
+  /** Sort the materials array based on `sortConfig` */
   const sortedMaterials = [...materials].sort((a, b) => {
-    if (sortConfig !== null) {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
-      if (aValue < bValue) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
-      }
+    if (!sortConfig) return 0;
+
+    let aValue = a[sortConfig.key];
+    let bValue = b[sortConfig.key];
+
+    // If the key is 'updatedAt', we might want to compare as dates
+    if (sortConfig.key === "updatedAt") {
+      // Convert to numeric time for comparison
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
     }
+
+    // Compare as strings or numbers
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      // Compare strings
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    } else if (typeof aValue === "number" && typeof bValue === "number") {
+      // Compare numbers
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    }
+
+    // Fallback if types don't match (shouldn't happen with your keys)
     return 0;
   });
 
-  const requestSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
+  /** Toggle sort direction or pick new key */
+  const requestSort = (key: SortableKey) => {
+    setSortConfig((prev) => {
+      if (prev && prev.key === key && prev.direction === "asc") {
+        // Switch to desc
+        return { key, direction: "desc" };
+      }
+      // Default to asc
+      return { key, direction: "asc" };
+    });
   };
 
+  /** Utility to show correct icon */
+  const getSortIcon = (key: SortableKey) => {
+    // Check if this column is the currently-sorted one
+    const isActive = sortConfig?.key === key;
+    const colorClass = isActive ? "text-black" : "text-gray-400";
+
+    // Decide which pair of icons (string vs. numeric) you want
+    if (key === "name" || key === "Category" || key === "Supplier") {
+      // Strings
+      return sortConfig?.direction === "asc" ? (
+        <ArrowDownAZ className={`inline-block ml-2 ${colorClass}`} />
+      ) : (
+        <ArrowDownZA className={`inline-block ml-2 ${colorClass}`} />
+      );
+    } else {
+      // Numeric or date
+      return sortConfig?.direction === "asc" ? (
+        <ArrowDown01 className={`inline-block ml-2 ${colorClass}`} />
+      ) : (
+        <ArrowDown10 className={`inline-block ml-2 ${colorClass}`} />
+      );
+    }
+  };
+
+  // Fetch once on mount
   useEffect(() => {
     fetchMaterials();
   }, []);
-
-  const getSortIcon = (key: string) => {
-    const isActive = sortConfig && sortConfig.key === key;
-    const color = isActive ? "text-black" : "text-gray-400";
-
-    if (key === 'name' || key === 'Category' || key === 'Supplier') {
-      return sortConfig?.direction === "asc" ? (
-        <ArrowDownAZ className={`inline-block cursor-pointer ml-2 ${color}`} />
-      ) : (
-        <ArrowDownZA className={`inline-block cursor-pointer ml-2 ${color}`} />
-      );
-    } else {
-      return sortConfig?.direction === "asc" ? (
-        <ArrowDown01 className={`inline-block cursor-pointer ml-2 ${color}`} />
-      ) : (
-        <ArrowDown10 className={`inline-block cursor-pointer ml-2 ${color}`} />
-      );
-    }
-  };
 
   return (
     <Layout>
@@ -107,6 +169,8 @@ export default function MaterialsPage() {
           <h2 className="text-3xl font-bold tracking-tight">Materials</h2>
           <AddMaterialButton refreshMaterials={fetchMaterials} />
         </div>
+
+        {/* Optional Dashboard Component */}
         <MaterialsDashboard refreshMaterials={fetchMaterials} />
 
         {/* Materials Table */}
@@ -114,23 +178,23 @@ export default function MaterialsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead onClick={() => requestSort('name')}>
-                  Name {getSortIcon('name')}
+                <TableHead onClick={() => requestSort("name")}>
+                  Name {getSortIcon("name")}
                 </TableHead>
-                <TableHead onClick={() => requestSort('Category')}>
-                  Category {getSortIcon('Category')}
+                <TableHead onClick={() => requestSort("Category")}>
+                  Category {getSortIcon("Category")}
                 </TableHead>
-                <TableHead onClick={() => requestSort('Supplier')}>
-                  Supplier {getSortIcon('Supplier')}
+                <TableHead onClick={() => requestSort("Supplier")}>
+                  Supplier {getSortIcon("Supplier")}
                 </TableHead>
-                <TableHead onClick={() => requestSort('quantity')}>
-                  Quantity {getSortIcon('quantity')}
+                <TableHead onClick={() => requestSort("quantity")}>
+                  Quantity {getSortIcon("quantity")}
                 </TableHead>
-                <TableHead onClick={() => requestSort('priceNetto')}>
-                  Price {getSortIcon('priceNetto')}
+                <TableHead onClick={() => requestSort("priceNetto")}>
+                  Price {getSortIcon("priceNetto")}
                 </TableHead>
-                <TableHead onClick={() => requestSort('updatedAt')}>
-                  Last Update {getSortIcon('updatedAt')}
+                <TableHead onClick={() => requestSort("updatedAt")}>
+                  Last Update {getSortIcon("updatedAt")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -138,11 +202,15 @@ export default function MaterialsPage() {
               {sortedMaterials.length > 0 ? (
                 sortedMaterials.map((material) => (
                   <TableRow
-                    className="cursor-pointer"
                     key={material._id}
-                    onClick={() => router.push(`/materials/${material._id}`)}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      // E.g. navigate to details page:
+                      // or open a modal for editing
+                      // For now, let's push to /materials/[id]
+                      router.push(`/materials/${material._id}`);
+                    }}
                   >
-                    {/* Status Indicator + Name */}
                     <TableCell
                       className={`border-l-4 ${
                         material.quantity >= (material.minQuantity ?? 0) + 10
@@ -159,7 +227,7 @@ export default function MaterialsPage() {
                     <TableCell>
                       {material.quantity} {material.Unit}
                     </TableCell>
-                    <TableCell>{material.priceNetto} zl</TableCell>
+                    <TableCell>{material.priceNetto} zł</TableCell>
                     <TableCell>
                       {new Date(material.updatedAt).toLocaleString()}
                     </TableCell>
@@ -167,7 +235,7 @@ export default function MaterialsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center">
+                  <TableCell colSpan={6} className="text-center py-4">
                     No materials found.
                   </TableCell>
                 </TableRow>

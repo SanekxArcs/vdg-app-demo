@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 
 import { client } from "@/sanity/client";
+import { toast } from "sonner";
 
 // A small helper to build references
 function buildReference(_id: string) {
@@ -165,7 +166,7 @@ export default function NewProjectPage() {
   // Add a timeline event
   const handleAddTimelineEvent = () => {
     if (!timelineDraft.time || !timelineDraft.comment) {
-      alert("Please provide both time and comment for the event.");
+      toast.error("Please provide both time and comment for the event.");
       return;
     }
     setTimelineEvents((prev) => [...prev, timelineDraft]);
@@ -178,7 +179,7 @@ export default function NewProjectPage() {
   // Additional cost
   const handleAddCost = () => {
     if (!costDraft.description || !costDraft.amount) {
-      alert("Please provide cost description and amount.");
+      toast.error("Please provide cost description and amount.");
       return;
     }
     setAdditionalCosts((prev) => [...prev, costDraft]);
@@ -317,9 +318,11 @@ const calcMaterialSubtotal = (material: MaterialDoc) => {
       };
 
       const createdDoc = await client.create(newProjectDoc);
+      toast.success("Project created successfully!");
       console.log("Project created in Sanity:", createdDoc);
       router.push("/projects");
     } catch (error) {
+      toast.error("Error creating project");
       console.error("Error creating project:", error);
       setIsLoading(false);
     }

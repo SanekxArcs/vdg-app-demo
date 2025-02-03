@@ -16,50 +16,93 @@ import {
 } from "@/components/ui/select";
 import { client } from "@/sanity/client";
 import { toast } from "sonner";
-import { Save, Trash, ArrowLeft } from "lucide-react"; // ✅ Import icons
+import { Save, Trash, ArrowLeft } from "lucide-react";
 
-const MATERIAL_QUERY = (
-  id: string
-) => `*[_type == "material" && _id == "${id}"][0]{
-  _id,
-  name,
-  description,
-  quantity,
-  pieces,
-  "Unit": unit->name,          
-  priceNetto,
-  "Supplier": supplier->name,  
-  "Category": category->name,
-  minQuantity,
-  createdAt,
-  updatedAt
-}`;
+// Interfaces for your reference documents
+interface Category {
+  _id: string;
+  name: string;
+}
+
+interface Supplier {
+  _id: string;
+  name: string;
+}
+
+interface Unit {
+  _id: string;
+  name: string;
+}
+
+// Interface for your "material" object fetched from Sanity
+interface Material {
+  _id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  pieces: number;
+  Unit: string; // e.g. "kg", "pieces", etc. (resolved from unit->name)
+  priceNetto: number;
+  Supplier: string; // supplier->name
+  Category: string; // category->name
+  minQuantity: number;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+// GROQ query for a single material by _id
+const MATERIAL_QUERY = (id: string) => `
+  *[_type == "material" && _id == "${id}"][0]{
+    _id,
+    name,
+    description,
+    quantity,
+    pieces,
+    "Unit": unit->name,          
+    priceNetto,
+    "Supplier": supplier->name,  
+    "Category": category->name,
+    minQuantity,
+    createdAt,
+    updatedAt
+  }
+`;
 
 export default function MaterialDetailsPage() {
-  const { id } = useParams();
+  const { id } = useParams() as { id: string };
   const router = useRouter();
-  const [material, setMaterial] = useState<any>(null);
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [units, setUnits] = useState([]);
+
+  // Material state
+  const [material, setMaterial] = useState<Material | null>(null);
+
+  // Arrays for categories, suppliers, and units
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
 
   useEffect(() => {
     if (!id) return;
 
-    // Fetch material details
+    // 1) Fetch material details
     client
-      .fetch(MATERIAL_QUERY(id))
-      .then(setMaterial)
+      .fetch<Material>(MATERIAL_QUERY(id)) // <Material> for type inference
+      .then((fetchedMaterial) => {
+        setMaterial(fetchedMaterial);
+      })
       .catch((error) => console.error("Error fetching material:", error));
 
-    // Fetch categories, suppliers, and units
+    // 2) Fetch categories, suppliers, and units
     client
-      .fetch(
+      .fetch<{
+        categories: Category[];
+        suppliers: Supplier[];
+        units: Unit[];
+      }>(
         `{
-      "categories": *[_type == "category"]{_id, name},
-      "suppliers": *[_type == "supplier"]{_id, name},
-      "units": *[_type == "pieceType"]{_id, name}
-    }`
+        "categories": *[_type == "category"]{_id, name},
+        "suppliers": *[_type == "supplier"]{_id, name},
+        "units": *[_type == "pieceType"]{_id, name}
+      }`
       )
       .then((data) => {
         setCategories(data.categories);
@@ -70,10 +113,15 @@ export default function MaterialDetailsPage() {
   }, [id]);
 
   const handleUpdate = async () => {
+    if (!material) return;
     try {
       await client
-        .patch(id)
-        .set({ ...material, updatedAt: new Date().toISOString() })
+        .patch(material._id)
+        .set({
+          // Spread the material state
+          ...material,
+          updatedAt: new Date().toISOString(),
+        })
         .commit();
 
       toast.success("Material updated successfully!");
@@ -83,14 +131,15 @@ export default function MaterialDetailsPage() {
     }
   };
 
-  const handleClickSaveAndBack = () => {
-    handleUpdate();
+  const handleClickSaveAndBack = async () => {
+    await handleUpdate();
     router.push("/materials");
   };
 
   const handleDelete = async () => {
+    if (!material) return;
     try {
-      await client.delete(id);
+      await client.delete(material._id);
       toast.success("Material deleted successfully!");
       router.push("/materials");
     } catch (error) {
@@ -107,20 +156,25 @@ export default function MaterialDetailsPage() {
         {/* Back Button */}
         <Button
           variant="outline"
-          className="flex items-center gap-2 text-black  hover:bg-gray-200"
+          className="flex items-center gap-2 text-black hover:bg-gray-200"
           onClick={() => router.push("/materials")}
         >
           <ArrowLeft size={16} />
           Back
         </Button>
+
         <h2 className="text-3xl font-bold tracking-tight">Edit Material</h2>
 
         {/* Name */}
         <div className="space-y-2">
           <Label>Name</Label>
           <Input
-            value={material.name || ""}
-            onChange={(e) => setMaterial({ ...material, name: e.target.value })}
+            value={material.name}
+            onChange={(e) =>
+              setMaterial((prev) =>
+                prev ? { ...prev, name: e.target.value } : null
+              )
+            }
           />
         </div>
 
@@ -128,9 +182,11 @@ export default function MaterialDetailsPage() {
         <div className="space-y-2">
           <Label>Description</Label>
           <Textarea
-            value={material.description || ""}
+            value={material.description}
             onChange={(e) =>
-              setMaterial({ ...material, description: e.target.value })
+              setMaterial((prev) =>
+                prev ? { ...prev, description: e.target.value } : null
+              )
             }
           />
         </div>
@@ -141,7 +197,9 @@ export default function MaterialDetailsPage() {
           <Select
             value={material.Category || ""}
             onValueChange={(value) =>
-              setMaterial({ ...material, Category: value })
+              setMaterial((prev) =>
+                prev ? { ...prev, Category: value } : null
+              )
             }
           >
             <SelectTrigger>
@@ -163,7 +221,9 @@ export default function MaterialDetailsPage() {
           <Select
             value={material.Supplier || ""}
             onValueChange={(value) =>
-              setMaterial({ ...material, Supplier: value })
+              setMaterial((prev) =>
+                prev ? { ...prev, Supplier: value } : null
+              )
             }
           >
             <SelectTrigger>
@@ -184,7 +244,9 @@ export default function MaterialDetailsPage() {
           <Label>Unit</Label>
           <Select
             value={material.Unit || ""}
-            onValueChange={(value) => setMaterial({ ...material, Unit: value })}
+            onValueChange={(value) =>
+              setMaterial((prev) => (prev ? { ...prev, Unit: value } : null))
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="Select unit" />
@@ -204,9 +266,13 @@ export default function MaterialDetailsPage() {
           <Label>Quantity</Label>
           <Input
             type="number"
-            value={material.quantity || 0}
+            value={material.quantity}
             onChange={(e) =>
-              setMaterial({ ...material, quantity: Number(e.target.value) })
+              setMaterial((prev) =>
+                prev
+                  ? { ...prev, quantity: parseInt(e.target.value, 10) || 0 }
+                  : null
+              )
             }
           />
         </div>
@@ -216,9 +282,13 @@ export default function MaterialDetailsPage() {
           <Label>Pieces</Label>
           <Input
             type="number"
-            value={material.pieces || 0}
+            value={material.pieces}
             onChange={(e) =>
-              setMaterial({ ...material, pieces: Number(e.target.value) })
+              setMaterial((prev) =>
+                prev
+                  ? { ...prev, pieces: parseInt(e.target.value, 10) || 0 }
+                  : null
+              )
             }
           />
         </div>
@@ -228,9 +298,16 @@ export default function MaterialDetailsPage() {
           <Label>Minimum Quantity</Label>
           <Input
             type="number"
-            value={material.minQuantity || 0}
+            value={material.minQuantity}
             onChange={(e) =>
-              setMaterial({ ...material, minQuantity: Number(e.target.value) })
+              setMaterial((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      minQuantity: parseInt(e.target.value, 10) || 0,
+                    }
+                  : null
+              )
             }
           />
         </div>
@@ -241,9 +318,16 @@ export default function MaterialDetailsPage() {
           <Input
             type="number"
             step="0.01"
-            value={material.priceNetto || 0}
+            value={material.priceNetto}
             onChange={(e) =>
-              setMaterial({ ...material, priceNetto: Number(e.target.value) })
+              setMaterial((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      priceNetto: parseFloat(e.target.value) || 0,
+                    }
+                  : null
+              )
             }
           />
         </div>
@@ -265,7 +349,7 @@ export default function MaterialDetailsPage() {
         </p>
 
         <div className="flex justify-between mt-6">
-          {/* Save Button (White with Black Border, Green on Hover) */}
+          {/* Save Button */}
           <Button
             onClick={handleUpdate}
             variant="outline"
@@ -274,7 +358,8 @@ export default function MaterialDetailsPage() {
             <Save size={16} />
             Save
           </Button>
-          {/* Save Button (White with Black Border, Green on Hover) */}
+
+          {/* Save and Back */}
           <Button
             onClick={handleClickSaveAndBack}
             variant="outline"
@@ -284,7 +369,7 @@ export default function MaterialDetailsPage() {
             Save and Back <ArrowLeft size={16} />
           </Button>
 
-          {/* Delete Button (Black with White Text, Red on Hover) */}
+          {/* Delete Button */}
           <Button
             onClick={handleDelete}
             className="flex items-center gap-2 bg-black text-white hover:bg-red-500"
