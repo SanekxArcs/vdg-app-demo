@@ -178,23 +178,30 @@ export default function MaterialsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead onClick={() => requestSort("name")}>
+                <TableHead
+                  onClick={() => requestSort("name")}
+                ><div className="flex items-center flex-nowrap">
                   Name {getSortIcon("name")}
+                </div>
+                  
                 </TableHead>
-                <TableHead onClick={() => requestSort("Category")}>
-                  Category {getSortIcon("Category")}
+
+                <TableHead
+                  onClick={() => requestSort("Category")}
+                ><div className="flex items-center flex-nowrap">Category {getSortIcon("Category")}</div>
+                  
                 </TableHead>
                 <TableHead onClick={() => requestSort("Supplier")}>
-                  Supplier {getSortIcon("Supplier")}
+                  <div className="flex items-center flex-nowrap">Supplier {getSortIcon("Supplier")}</div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("quantity")}>
-                  Quantity {getSortIcon("quantity")}
+                  <div className="flex items-center flex-nowrap">Quantity {getSortIcon("quantity")}</div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("priceNetto")}>
-                  Price {getSortIcon("priceNetto")}
+                  <div className="flex items-center flex-nowrap">Price {getSortIcon("priceNetto")}</div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("updatedAt")}>
-                  Last Update {getSortIcon("updatedAt")}
+                  <div className="flex items-center flex-nowrap">Last Update {getSortIcon("updatedAt")}</div>
                 </TableHead>
               </TableRow>
             </TableHeader>

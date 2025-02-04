@@ -28,11 +28,6 @@ const routes = [
     icon: Settings,
     href: '/settings',
   },
-  {
-    label: 'Notifications',
-    icon: Bell,
-    href: '/notifications',
-  },
 ];
 
 export function Sidebar() {

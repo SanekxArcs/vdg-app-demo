@@ -28,6 +28,7 @@ import { toast } from "sonner";
 
 // Імпортуйте налаштований клієнт Sanity (приклад):
 import { client } from "@/sanity/client";
+import { Separator } from "@/components/ui/separator";
 
 // Тип для проєкту (пристосуйте під свої поля)
 type Project = {
@@ -163,7 +164,8 @@ export default function ProjectsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>MPK №</TableHead>
+                <TableHead>MPK</TableHead>
+                
                 <TableHead>Address</TableHead>
                 <TableHead>Firm</TableHead>
                 <TableHead>Firm ID</TableHead>
@@ -211,19 +213,25 @@ export default function ProjectsPage() {
                       }
                       className="cursor-pointer"
                     >
-                      <div className="flex items-center group">
+                      <div className="flex items-center text-nowrap group">
+                        {project.postal}, {project.name}, {project.address}
                         <MapPin className="h-5 w-5 mr-2 opacity-0 transition-all group-hover:opacity-100" />
-                        {project.postal} {project.name}, {project.address}
                       </div>
                     </TableCell>
 
-                    <TableCell>{project.firm}</TableCell>
-                    <TableCell>{project.firmCode}</TableCell>
-                    <TableCell>{project.type}</TableCell>
+                    <TableCell>
+                      <div className=" text-nowrap">{project.firm}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className=" text-nowrap">{project.firmCode}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className=" text-nowrap">{project.type}</div>
+                    </TableCell>
 
                     <TableCell>
                       <div
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                        className={` inline-flex text-nowrap items-center rounded-full px-2.5 py-0.5 text-xs font-medium
                             ${
                               project.status === "Completed"
                                 ? "bg-green-100 text-green-800"
