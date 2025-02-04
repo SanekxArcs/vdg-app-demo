@@ -14,24 +14,48 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+/**
+ * Тип описує кожен документ 'material' з вашої бази.
+ * Тут визначте реальні поля, які є в схемі Sanity для матеріалів.
+ */
+interface Material {
+  quantity: number;
+  minQuantity?: number;
+  updatedAt: string;
+}
+
+/**
+ * Пропси для компонента, якщо потрібно передати метод перезавантаження ззовні.
+ */
+interface MaterialsDashboardProps {
+  refreshMaterials?: () => void;
+}
+
+/**
+ * Об'єкт зі стилями для кольорів статусу
+ */
 const STATUS_COLORS = {
   green: "text-green-500",
   yellow: "text-yellow-500",
   red: "text-red-500",
 };
 
-export default function MaterialsDashboard({ refreshMaterials }) {
-  const [materials, setMaterials] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function MaterialsDashboard({
+  refreshMaterials,
+}: MaterialsDashboardProps) {
+  // Масив матеріалів, типізований за допомогою інтерфейсу Material
+  const [materials, setMaterials] = useState<Material[]>([]);
+  // Індикатор завантаження
+  const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    fetchMaterials();
-  }, []);
-
+  /**
+   * Отримуємо дані про матеріали з Sanity
+   */
   const fetchMaterials = async () => {
     setLoading(true);
     try {
-      const data = await client.fetch(
+      // Вказуємо <Material[]> щоб TypeScript знав, який тип повертає запит
+      const data = await client.fetch<Material[]>(
         `*[_type == "material"]{quantity, minQuantity, updatedAt}`
       );
       setMaterials(data);
@@ -42,7 +66,15 @@ export default function MaterialsDashboard({ refreshMaterials }) {
     }
   };
 
+  // Викликаємо fetchMaterials при першому завантаженні
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  // Загальна кількість матеріалів
   const totalMaterials = materials.length;
+
+  // Підрахунок кольорів за рівнями запасу
   const greenCount = materials.filter(
     (m) => m.quantity >= (m.minQuantity ?? 0) + 10
   ).length;
@@ -54,21 +86,26 @@ export default function MaterialsDashboard({ refreshMaterials }) {
   const redCount = materials.filter(
     (m) => m.quantity < (m.minQuantity ?? 0)
   ).length;
+
+  // Визначення дати останнього оновлення
   const latestUpdate =
     materials.length > 0
       ? new Date(
-          Math.max(...materials.map((m) => new Date(m.updatedAt)))
+          Math.max(...materials.map((m) => new Date(m.updatedAt).getTime()))
         ).toLocaleDateString()
       : "No updates";
+
+  // Визначення часу останнього оновлення
   const latestUpdateTime =
     materials.length > 0
       ? new Date(
-          Math.max(...materials.map((m) => new Date(m.updatedAt)))
+          Math.max(...materials.map((m) => new Date(m.updatedAt).getTime()))
         ).toLocaleTimeString()
       : "No updates";
 
   return (
-    <div className="grid grid-cols-1  lg:grid-cols-3 gap-4 mb-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      {/* Карта з загальною кількістю матеріалів */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Total Materials</CardTitle>
@@ -80,7 +117,8 @@ export default function MaterialsDashboard({ refreshMaterials }) {
           </div>
         </CardContent>
       </Card>
-      
+
+      {/* Карта з підсумком запасів (green / yellow / red) */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
@@ -102,6 +140,7 @@ export default function MaterialsDashboard({ refreshMaterials }) {
         </CardContent>
       </Card>
 
+      {/* Карта з датою та часом останнього оновлення */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Latest Update</CardTitle>
@@ -116,7 +155,6 @@ export default function MaterialsDashboard({ refreshMaterials }) {
           </p>
         </CardContent>
       </Card>
-
     </div>
   );
 }
