@@ -7,6 +7,7 @@ import typ from './typ'
 import status from './status'
 import firm from './firm'
 import ekipa from './ekipa'
+import admins from './Admins'
 
 export const schemaTypes = [
   material,
@@ -18,4 +19,6 @@ export const schemaTypes = [
   status,
   firm,
   ekipa,
+  admins
+
 ]

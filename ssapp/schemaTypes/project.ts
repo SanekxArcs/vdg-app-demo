@@ -1,5 +1,6 @@
 // schemas/project.js
 import {defineType, defineField} from 'sanity'
+import { nanoid } from 'nanoid';
 
 export default defineType({
   name: 'project',
@@ -48,6 +49,14 @@ export default defineType({
       title: 'Description',
       type: 'text',
       description: 'Short description of the project',
+    }),
+
+    // link to project  online disc
+    defineField({
+      name: 'link',
+      title: 'Link',
+      type: 'url',
+      description: 'Link to the project online disc',
     }),
 
     // Reference fields
@@ -123,6 +132,15 @@ export default defineType({
               initialValue: 0,
               description: 'Quantity of this material used for the project',
             },
+            {
+              name: 'id',
+              title: 'ID',
+              type: 'string',
+              description: 'Unique ID for this material',
+              initialValue: () => nanoid(), // Generate unique ID on creation
+              readOnly: true, // Optional: prevent manual editing
+              validation: (Rule) => Rule.required(), // Optional: ensure ID exists
+            },
           ],
         }),
       ],
@@ -145,6 +163,15 @@ export default defineType({
               title: 'Time',
               type: 'datetime',
               description: 'When this event or update happened',
+              initialValue: new Date().toISOString(),
+            },
+            //admins
+            {
+              name: 'author',
+              title: 'Author',
+              type: 'reference',
+              to: [{type: 'admins'}],
+              description: 'Author of this event or update',
             },
             {
               name: 'comment',
