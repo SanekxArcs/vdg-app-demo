@@ -80,6 +80,7 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
       setSelectedMaterial("");
       setMaterialQuantity("");
       // Optionally refresh local project data here
+      await fetchUpdatedProject();
 
       console.log("Material added to project");
     } catch (err) {
