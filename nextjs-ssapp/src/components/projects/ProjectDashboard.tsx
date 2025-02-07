@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +10,39 @@ import {
   MapPin,
   Users,
   ExternalLink,
+  Settings,
 } from "lucide-react";
+import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
+import { StatusSelector } from "./StatusSelector"; // Import the new component
+
+interface Status {
+  _id: string;
+  name: string;
+}
 
 export function ProjectDashboard({ project }: { project: any }) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false); // Control visibility of StatusSelector
+  const [statuses, setStatuses] = useState<Status[]>([]); // Store available statuses
+  const [selectedStatus, setSelectedStatus] = useState<Status>(project.status);
+
+  useEffect(() => {
+    // Fetch statuses from your data source (Sanity, API, etc.)
+    // Replace this with your actual data fetching logic
+    const fetchStatuses = async () => {
+      // Example using a local array:
+      const mockStatuses = [
+        { _id: "1", name: "Planned" },
+        { _id: "2", name: "In progress" },
+        { _id: "3", name: "On Hold" },
+        { _id: "4", name: "Completed" },
+      ];
+      setStatuses(mockStatuses);
+    };
+
+    fetchStatuses();
+  }, []);
+
   // Format a date into a human-readable string
   const formatDate = (date: Date | string) =>
     new Date(date).toLocaleDateString("en-US", {
@@ -23,7 +54,30 @@ export function ProjectDashboard({ project }: { project: any }) {
   // Build a Google Maps URL from the project address
   const getGoogleMapsUrl = () => {
     const address = `${project.address}, ${project.city}, ${project.postal}`;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      address
+    )}`;
+  };
+
+  // Handler for status change
+  const handleStatusChange = async (newStatus: Status) => {
+    setSelectedStatus(newStatus);
+    setIsStatusSelectorOpen(false); // Close the selector
+
+    // Update the project status in your data source (Sanity, API, etc.)
+    // Replace this with your actual data updating logic
+    console.log("Updating status to:", newStatus);
+    // try {
+    //   await client
+    //     .patch(project._id)
+    //     .set({ status: newStatus })
+    //     .commit();
+    //   router.refresh();
+    //   toast.success("Status updated successfully");
+    // } catch (error) {
+    //   toast.error("Failed to update status");
+    //   console.error("Failed to update status:", error);
+    // }
   };
 
   return (
@@ -37,21 +91,29 @@ export function ProjectDashboard({ project }: { project: any }) {
             </h2>
             <Badge
               variant="outline"
-              className={` 
+              className={` cursor-pointer
                             ${
-                              project.status.name === "Completed"
+                              selectedStatus.name === "Completed"
                                 ? "bg-green-100 text-green-800"
-                                : project.status.name === "In progress"
+                                : selectedStatus.name === "In progress"
                                   ? "bg-blue-100 text-blue-800"
-                                  : project.status.name === "On Hold"
+                                  : selectedStatus.name === "On Hold"
                                     ? "bg-yellow-100 text-yellow-800"
-                                    : project.status.name === "Planned"
+                                    : selectedStatus.name === "Planned"
                                       ? "bg-yellow-100 text-yellow-800"
                                       : "bg-gray-50 text-gray-600"
                             }`}
+              onClick={() => setIsStatusSelectorOpen(!isStatusSelectorOpen)} // Open selector on click
             >
-              {project.status.name}
+              {selectedStatus.name}
             </Badge>
+            {isStatusSelectorOpen && statuses.length > 0 && (
+              <StatusSelector
+                currentStatus={selectedStatus}
+                statuses={statuses}
+                onStatusChange={handleStatusChange}
+              />
+            )}
           </div>
         </div>
         <div className="flex md:flex-row gap-y-2 flex-col space-x-2">
@@ -67,6 +129,9 @@ export function ProjectDashboard({ project }: { project: any }) {
               <ExternalLink className="h-4 w-4 mr-1" />
               Project files
             </a>
+          </Button>
+          <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
+            <Settings className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -143,6 +208,13 @@ export function ProjectDashboard({ project }: { project: any }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Project Settings Dialog */}
+      <ProjectSettingsDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        project={project}
+      />
     </>
   );
 }

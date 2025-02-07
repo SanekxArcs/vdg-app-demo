@@ -25,6 +25,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 /**
  * Повертає поточну дату/час у форматі datetime-local
@@ -52,6 +53,7 @@ export function ProjectTimeline({ project }: { project: any }) {
   const [newTime, setNewTime] = useState(getDefaultDatetimeLocalValue());
   const [newAuthor, setNewAuthor] = useState("");
   const [authors, setAuthors] = useState<any[]>([]);
+    const router = useRouter();
 
   useEffect(() => {
     async function fetchAuthors() {
@@ -68,7 +70,7 @@ export function ProjectTimeline({ project }: { project: any }) {
       }
     }
     fetchAuthors();
-  }, [timeline]);
+  }, []);
 
   /**
    * Форматує дату у читабельний рядок
@@ -104,7 +106,10 @@ export function ProjectTimeline({ project }: { project: any }) {
       setTimeline((prev) => [...prev, newEvent]);
       setNewComment("");
       setNewTime(getDefaultDatetimeLocalValue());
+      toast.success("Added new timeline event.");
+      router.refresh();
     } catch (error) {
+      toast.error("Could not add timeline event.");
       console.error("Error posting timeline event:", error);
     }
   };
@@ -120,7 +125,7 @@ export function ProjectTimeline({ project }: { project: any }) {
         .unset([`timeline[_key=="${eventKey}"]`])
         .commit();
       setTimeline((prev) => prev.filter((ev) => ev._key !== eventKey));
-
+      router.refresh();
       toast.success("Deleted timeline event.");
     } catch (error) {
       console.error("Error deleting event:", error);

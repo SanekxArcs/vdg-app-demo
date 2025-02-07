@@ -118,7 +118,7 @@ export default function MaterialDetailsPage() {
       await client
         .patch(material._id)
         .set({
-          // Spread the material state
+          
           ...material,
           updatedAt: new Date().toISOString(),
         })

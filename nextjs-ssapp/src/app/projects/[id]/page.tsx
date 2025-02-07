@@ -44,7 +44,6 @@ export default async function ProjectPage({
       status-> { name },
       firm-> { name },
       ekipa-> { name },
-      // Flatten materials: extract material reference and quantity from usedMaterial
       materials[] {
         "material": material-> { name, priceNetto, unit->{name}, pieces },
         "quantity": quantity,

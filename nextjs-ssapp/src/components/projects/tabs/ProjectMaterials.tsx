@@ -23,6 +23,7 @@ import {
 import { Plus } from "lucide-react";
 import { client } from "@/sanity/client";
 import { nanoid } from "nanoid";
+import { useRouter } from "next/navigation";
 
 interface ProjectType {
   materials: {
@@ -42,6 +43,7 @@ interface Material {
 }
 
 export function ProjectMaterials({ project }: { project: ProjectType }) {
+    const router = useRouter();
 
   // Local state for the "Add Material" form
   const [selectedMaterial, setSelectedMaterial] = useState("");
@@ -80,7 +82,7 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
       setSelectedMaterial("");
       setMaterialQuantity("");
       // Optionally refresh local project data here
-      await fetchUpdatedProject();
+      router.refresh();
 
       console.log("Material added to project");
     } catch (err) {
@@ -111,7 +113,7 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
               const quantity = mat.quantity ?? 0;
               const priceNetto = mat.material?.priceNetto ?? 0;
               const unitName = mat.material?.unit?.name || "";
-              const pieces = mat.material?.pieces || 0;
+              const pieces = mat.material?.pieces || 1;
 
               return (
                 <TableRow key={index} className="p-1">
