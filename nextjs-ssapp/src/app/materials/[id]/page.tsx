@@ -50,6 +50,11 @@ interface Material {
   updatedAt: string; // ISO date string
 }
 
+interface PageProps {
+  params?: { id: string };
+  searchParams?: any;
+}
+
 // GROQ query for a single material by _id
 const MATERIAL_QUERY = (id: string) => `
   *[_type == "material" && _id == "${id}"][0]{

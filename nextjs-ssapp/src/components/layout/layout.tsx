@@ -16,6 +16,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Toaster } from "sonner";
+import { UserButton } from "@/components/user-button";
+import { ModeToggle } from "@/components/mode-toggle";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -43,6 +45,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
+            </div>
+            <div className="ml-auto space-x-4 pr-5">
+              <ModeToggle />
             </div>
           </header>
 

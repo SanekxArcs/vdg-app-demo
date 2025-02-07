@@ -79,14 +79,13 @@ export default function ProjectsPage() {
       
     } catch (error) {
       toast.error(`Error fetching projects: ${error}`);
-      console.error("Помилка при завантаженні проєктів:", error);
+      console.error("Error fetching projects:", error);
     }
   };
 
   // Викликаємо fetchProjects при монтуванні компонента
   useEffect(() => {
     fetchProjects();
-    toast.success("Projects loaded successfully.");
   }, []);
 
   // Фільтрація списку проєктів

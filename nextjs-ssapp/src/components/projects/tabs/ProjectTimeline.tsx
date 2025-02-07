@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { nanoid } from "nanoid";
-import { client } from "@/sanity/client"; // Ваш сконфігурований Sanity-клієнт
+import { client } from "@/sanity/client"; // Sanity client
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,43 +27,59 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+// ✅ Define type for timeline events
+interface TimelineEvent {
+  _key: string;
+  _type: "event";
+  time: string; // ISO string date
+  comment: string;
+  author: { _ref: string };
+}
+
+// ✅ Define type for project
+interface Project {
+  _id: string;
+  timeline: TimelineEvent[];
+}
+
+// ✅ Define type for authors
+interface AdminUser {
+  _id: string;
+  name: string;
+}
+
 /**
- * Повертає поточну дату/час у форматі datetime-local
+ * Returns the current date/time in datetime-local format
  */
 function getDefaultDatetimeLocalValue() {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const yyyy = now.getFullYear();
-  const mm = pad(now.getMonth() + 1);
-  const dd = pad(now.getDate());
-  const hh = pad(now.getHours());
-  const min = pad(now.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+    now.getDate()
+  )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
 
 /**
- * Компонент ProjectTimeline
- *  - Відображає список подій (timeline)
- *  - Завантажує список авторів (admins) із Sanity
- *  - Додає нові події та видаляє існуючі через patch-запити
+ * Project Timeline Component
  */
-export function ProjectTimeline({ project }: { project: any }) {
-  const [timeline, setTimeline] = useState(project.timeline || []);
+export function ProjectTimeline({ project }: { project: Project }) {
+  const [timeline, setTimeline] = useState<TimelineEvent[]>(
+    project.timeline || []
+  );
   const [newComment, setNewComment] = useState("");
   const [newTime, setNewTime] = useState(getDefaultDatetimeLocalValue());
   const [newAuthor, setNewAuthor] = useState("");
-  const [authors, setAuthors] = useState<any[]>([]);
-    const router = useRouter();
+  const [authors, setAuthors] = useState<AdminUser[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchAuthors() {
       try {
-        const query = '*[_type == "admins"] { _id, name, _ref }';
-        const data = await client.fetch(query);
+        const query = '*[_type == "admins"] { _id, name }';
+        const data: AdminUser[] = await client.fetch(query);
         setAuthors(data);
-        console.log(project.timeline);
         if (data.length > 0) {
-          setNewAuthor(data[0]._id); // автоматично обираємо першого в списку
+          setNewAuthor(data[0]._id);
         }
       } catch (err) {
         console.error("Error fetching admins:", err);
@@ -73,9 +89,9 @@ export function ProjectTimeline({ project }: { project: any }) {
   }, []);
 
   /**
-   * Форматує дату у читабельний рядок
+   * Formats date to readable format
    */
-  const formatDate = (date: Date | string) =>
+  const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -83,12 +99,12 @@ export function ProjectTimeline({ project }: { project: any }) {
     });
 
   /**
-   * Додає нову подію (comment) в timeline
+   * Adds a new event to the timeline
    */
   const handleSendComment = async () => {
     if (!newComment.trim()) return;
 
-    const newEvent = {
+    const newEvent: TimelineEvent = {
       _key: nanoid(),
       _type: "event",
       time: new Date(newTime).toISOString(),
@@ -115,7 +131,7 @@ export function ProjectTimeline({ project }: { project: any }) {
   };
 
   /**
-   * Видаляє подію з timeline за її унікальним _key
+   * Deletes an event from the timeline
    */
   const handleDelete = async (eventKey: string) => {
     if (!eventKey) return;
@@ -139,36 +155,32 @@ export function ProjectTimeline({ project }: { project: any }) {
         <CardTitle>Project Timeline</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Display updated timeline */}
-        {timeline.length === 0 ? (
-          ""
-        ) : (
+        {/* Timeline Display */}
+        {timeline.length > 0 && (
           <div className="space-y-4 mb-6">
-            {timeline.map((event: any, index: number) => (
+            {timeline.map((event) => (
               <div
-                key={event._key || index}
+                key={event._key}
                 className="flex gap-4 items-center border-2 rounded-md p-2 border-gray-200"
               >
                 <div className="text-sm font-bold text-muted-foreground text-nowrap">
-                  {event.author?.name || "Unknown Author"} -{" "}
-                  <span className="font-thin">{formatDate(event.time)}</span>:
+                  {authors.find((a) => a._id === event.author._ref)?.name ||
+                    "Unknown Author"}{" "}
+                  - <span className="font-thin">{formatDate(event.time)}</span>:
                 </div>
                 <div className="w-full">
                   <p className="text-sm">{event.comment}</p>
                 </div>
 
-                {/* Delete button with confirmation dialog */}
+                {/* Delete Button */}
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="destructive" className="">
-                      Delete
-                    </Button>
+                    <Button variant="destructive">Delete</Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirm Deletion</DialogTitle>
                       <DialogDescription>
-                        {event.author?.name || "Unknown Author"} -{" "}
                         {formatDate(event.time)} - {event.comment}. <br />
                         <span className="font-bold">
                           Are you sure you want to delete this event?
@@ -195,26 +207,17 @@ export function ProjectTimeline({ project }: { project: any }) {
           </div>
         )}
 
-        {/* Форма для додавання нової події */}
+        {/* New Event Form */}
         <div>
-          <Label htmlFor="comment">
-            Add {timeline.length === 0 ? "First Comment" : "Comment"}
-          </Label>
+          <Label htmlFor="comment">Add Comment</Label>
           <textarea
             id="comment"
             className="w-full border rounded p-2"
             placeholder="Enter comment..."
             value={newComment}
-            onChange={(e) => {
-              // Після першого введення оновлюємо час на поточний
-              if (!newComment) {
-                setNewTime(getDefaultDatetimeLocalValue());
-              }
-              setNewComment(e.target.value);
-            }}
+            onChange={(e) => setNewComment(e.target.value)}
           />
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Вибір часу */}
             <div className="flex-1">
               <Label htmlFor="time">Time</Label>
               <Input
@@ -224,12 +227,14 @@ export function ProjectTimeline({ project }: { project: any }) {
                 onChange={(e) => setNewTime(e.target.value)}
               />
             </div>
-            {/* Вибір автора */}
             <div className="flex-1">
-              <Label htmlFor="Author">Author</Label>
-              <Select value={newAuthor} onValueChange={setNewAuthor}>
+              <Label htmlFor="author">Author</Label>
+              <Select onValueChange={(value) => setNewAuthor(value)}>
                 <SelectTrigger>
-                  <SelectValue id="Author" placeholder="Select author" />
+                  <SelectValue
+                    defaultValue={newAuthor}
+                    placeholder="Select author"
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {authors.map((author) => (

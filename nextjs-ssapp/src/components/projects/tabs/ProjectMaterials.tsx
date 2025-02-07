@@ -26,16 +26,18 @@ import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 
 interface ProjectType {
+  _id: string;
   materials: {
     material?: {
       name?: string;
       priceNetto?: number;
       unit?: { name?: string };
+      pieces?: number; // ✅ Add pieces inside material
     } | null;
     quantity?: number;
-    pieces?: number;
   }[];
 }
+
 // ...existing code...
 interface Material {
   _id: string;
@@ -57,12 +59,12 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
       .catch(console.error);
   }, []);
 
-
   const handleAddMaterial = async () => {
-    if (!selectedMaterial || !materialQuantity) return;
+    if (!selectedMaterial || !materialQuantity || !project?._id) return;
+
     try {
       await client
-        .patch(project._id)
+        .patch(project._id) 
         .setIfMissing({ materials: [] })
         .append("materials", [
           {
@@ -78,10 +80,8 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
         ])
         .commit();
 
-      // Reset form
       setSelectedMaterial("");
       setMaterialQuantity("");
-      // Optionally refresh local project data here
       router.refresh();
 
       console.log("Material added to project");
@@ -90,13 +90,13 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
     }
   };
 
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Materials List</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Materials Table */}
         <Table>
           <TableHeader>
             <TableRow>

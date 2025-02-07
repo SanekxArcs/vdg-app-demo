@@ -8,10 +8,27 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarFooter,
+  SidebarHeader,
 } from "@/components/ui/sidebar";
 import { LayoutDashboard, Package, FolderKanban, Settings } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { NavUser } from "./nav-user";
+import {
+  AudioWaveform,
+  BookOpen,
+  Bot,
+  Command,
+  Frame,
+  GalleryVerticalEnd,
+  Map,
+  PieChart,
+  Settings2,
+  SquareTerminal,
+} from "lucide-react";
+import vdglogo from "@/../public/svgviewer-output (6).svg";
 
 // Define sidebar routes with their labels, icons, and destination URLs.
 const routes = [
@@ -30,10 +47,19 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
+      <SidebarHeader>
+        <SidebarMenuButton size="lg">
+        <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+          <GalleryVerticalEnd className="size-4" />
+          
+        </div>
+        <p>VDG Solar Sp. z o.o</p>
+        </SidebarMenuButton>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           {/* Sidebar header label */}
-          <SidebarGroupLabel>Material Management</SidebarGroupLabel>
+
           <SidebarMenu>
             {routes.map((route) => (
               <SidebarMenuItem key={route.href}>
@@ -52,6 +78,14 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <Image
+          src={vdglogo}
+          alt="VDG Solar FMS"
+          className="w-[20rem]  scale-150 h-auto"
+        />
+        <NavUser />
+      </SidebarFooter>
     </Sidebar>
   );
 }

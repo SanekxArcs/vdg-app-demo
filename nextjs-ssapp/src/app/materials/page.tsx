@@ -23,6 +23,7 @@ import AddMaterialButton from "@/components/materials/AddMaterialButton";
 import { toast } from "sonner";
 import MaterialsDashboard from "@/components/materials/MaterialsDashboard";
 
+
 /** Material interface that matches your GROQ query fields */
 interface Material {
   _id: string;
