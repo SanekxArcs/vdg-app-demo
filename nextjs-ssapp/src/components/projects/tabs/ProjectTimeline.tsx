@@ -26,12 +26,13 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Trash } from "lucide-react";
 
 // ✅ Define type for timeline events
 interface TimelineEvent {
   _key: string;
   _type: "event";
-  time: string; // ISO string date
+  time: string;
   comment: string;
   author: { _ref: string };
 }
@@ -48,20 +49,12 @@ interface AdminUser {
   name: string;
 }
 
-/**
- * Returns the current date/time in datetime-local format
- */
 function getDefaultDatetimeLocalValue() {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
-    now.getDate()
-  )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
 
-/**
- * Project Timeline Component
- */
 export function ProjectTimeline({ project }: { project: Project }) {
   const [timeline, setTimeline] = useState<TimelineEvent[]>(
     project.timeline || []
@@ -88,9 +81,6 @@ export function ProjectTimeline({ project }: { project: Project }) {
     fetchAuthors();
   }, []);
 
-  /**
-   * Formats date to readable format
-   */
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
@@ -98,9 +88,6 @@ export function ProjectTimeline({ project }: { project: Project }) {
       day: "numeric",
     });
 
-  /**
-   * Adds a new event to the timeline
-   */
   const handleSendComment = async () => {
     if (!newComment.trim()) return;
 
@@ -130,9 +117,6 @@ export function ProjectTimeline({ project }: { project: Project }) {
     }
   };
 
-  /**
-   * Deletes an event from the timeline
-   */
   const handleDelete = async (eventKey: string) => {
     if (!eventKey) return;
     try {
@@ -161,21 +145,23 @@ export function ProjectTimeline({ project }: { project: Project }) {
             {timeline.map((event) => (
               <div
                 key={event._key}
-                className="flex gap-4 items-center border-2 rounded-md p-2 border-gray-200"
+                className="flex flex-col md:flex-row gap-4 items-start md:items-center border-2 rounded-md p-3 border-gray-200"
               >
-                <div className="text-sm font-bold text-muted-foreground text-nowrap">
+                <div className="text-sm font-bold text-muted-foreground w-full md:w-auto">
                   {authors.find((a) => a._id === event.author._ref)?.name ||
                     "Unknown Author"}{" "}
                   - <span className="font-thin">{formatDate(event.time)}</span>:
                 </div>
-                <div className="w-full">
+                <div className="flex-1">
                   <p className="text-sm">{event.comment}</p>
                 </div>
 
                 {/* Delete Button */}
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="destructive">Delete</Button>
+                    <Button className="ml-auto" variant="destructive" size="icon">
+                      <Trash className="h-4 w-4" />
+                    </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
@@ -208,17 +194,17 @@ export function ProjectTimeline({ project }: { project: Project }) {
         )}
 
         {/* New Event Form */}
-        <div>
+        <div className="space-y-4">
           <Label htmlFor="comment">Add Comment</Label>
           <textarea
             id="comment"
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 min-h-[80px] md:min-h-[100px] resize-none"
             placeholder="Enter comment..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
           />
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <Label htmlFor="time">Time</Label>
               <Input
                 id="time"
@@ -227,7 +213,7 @@ export function ProjectTimeline({ project }: { project: Project }) {
                 onChange={(e) => setNewTime(e.target.value)}
               />
             </div>
-            <div className="flex-1">
+            <div>
               <Label htmlFor="author">Author</Label>
               <Select onValueChange={(value) => setNewAuthor(value)}>
                 <SelectTrigger>
@@ -246,7 +232,7 @@ export function ProjectTimeline({ project }: { project: Project }) {
               </Select>
             </div>
           </div>
-          <Button onClick={handleSendComment} className="md:w-auto w-full mt-4">
+          <Button onClick={handleSendComment} className="w-full md:w-auto mt-4">
             Send Comment
           </Button>
         </div>

@@ -157,11 +157,11 @@ export default function MaterialDetailsPage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="p-1 space-y-6">
         {/* Back Button */}
         <Button
           variant="outline"
-          className="flex items-center gap-2 text-black hover:bg-gray-200"
+          className="flex items-center gap-2"
           onClick={() => router.push("/materials")}
         >
           <ArrowLeft size={16} />
@@ -196,125 +196,129 @@ export default function MaterialDetailsPage() {
           />
         </div>
 
-        {/* Category */}
-        <div className="space-y-2">
-          <Label>Category</Label>
-          <Select
-            value={material.Category || ""}
-            onValueChange={(value) =>
-              setMaterial((prev) =>
-                prev ? { ...prev, Category: value } : null
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category._id} value={category.name}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex  gap-2">
+          {/* Category */}
+          <div className="space-y-2 flex-1">
+            <Label>Category</Label>
+            <Select
+              value={material.Category || ""}
+              onValueChange={(value) =>
+                setMaterial((prev) =>
+                  prev ? { ...prev, Category: value } : null
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category._id} value={category.name}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Supplier */}
+          <div className="space-y-2 flex-1">
+            <Label>Supplier</Label>
+            <Select
+              value={material.Supplier || ""}
+              onValueChange={(value) =>
+                setMaterial((prev) =>
+                  prev ? { ...prev, Supplier: value } : null
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select supplier" />
+              </SelectTrigger>
+              <SelectContent>
+                {suppliers.map((supplier) => (
+                  <SelectItem key={supplier._id} value={supplier.name}>
+                    {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* Supplier */}
-        <div className="space-y-2">
-          <Label>Supplier</Label>
-          <Select
-            value={material.Supplier || ""}
-            onValueChange={(value) =>
-              setMaterial((prev) =>
-                prev ? { ...prev, Supplier: value } : null
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select supplier" />
-            </SelectTrigger>
-            <SelectContent>
-              {suppliers.map((supplier) => (
-                <SelectItem key={supplier._id} value={supplier.name}>
-                  {supplier.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex  gap-2">
+          {/* Quantity */}
+          <div className="space-y-2 flex-1">
+            <Label>Quantity</Label>
+            <Input
+              type="number"
+              value={material.quantity}
+              onChange={(e) =>
+                setMaterial((prev) =>
+                  prev
+                    ? { ...prev, quantity: parseInt(e.target.value, 10) || 0 }
+                    : null
+                )
+              }
+            />
+          </div>
+          {/* Minimum Quantity */}
+          <div className="space-y-2 flex-1">
+            <Label>Minimum Quantity</Label>
+            <Input
+              type="number"
+              value={material.minQuantity}
+              onChange={(e) =>
+                setMaterial((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        minQuantity: parseInt(e.target.value, 10) || 0,
+                      }
+                    : null
+                )
+              }
+            />
+          </div>
         </div>
 
-        {/* Unit */}
-        <div className="space-y-2">
-          <Label>Unit</Label>
-          <Select
-            value={material.Unit || ""}
-            onValueChange={(value) =>
-              setMaterial((prev) => (prev ? { ...prev, Unit: value } : null))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select unit" />
-            </SelectTrigger>
-            <SelectContent>
-              {units.map((unit) => (
-                <SelectItem key={unit._id} value={unit.name}>
-                  {unit.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Quantity */}
-        <div className="space-y-2">
-          <Label>Quantity</Label>
-          <Input
-            type="number"
-            value={material.quantity}
-            onChange={(e) =>
-              setMaterial((prev) =>
-                prev
-                  ? { ...prev, quantity: parseInt(e.target.value, 10) || 0 }
-                  : null
-              )
-            }
-          />
-        </div>
-
-        {/* Pieces */}
-        <div className="space-y-2">
-          <Label>Pieces</Label>
-          <Input
-            type="number"
-            value={material.pieces}
-            onChange={(e) =>
-              setMaterial((prev) =>
-                prev
-                  ? { ...prev, pieces: parseInt(e.target.value, 10) || 0 }
-                  : null
-              )
-            }
-          />
-        </div>
-
-        {/* Minimum Quantity */}
-        <div className="space-y-2">
-          <Label>Minimum Quantity</Label>
-          <Input
-            type="number"
-            value={material.minQuantity}
-            onChange={(e) =>
-              setMaterial((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      minQuantity: parseInt(e.target.value, 10) || 0,
-                    }
-                  : null
-              )
-            }
-          />
+        <div className="flex  gap-2">
+          {/* Pieces */}
+          <div className="space-y-2 flex-1">
+            <Label>Pieces</Label>
+            <Input
+              type="number"
+              value={material.pieces}
+              onChange={(e) =>
+                setMaterial((prev) =>
+                  prev
+                    ? { ...prev, pieces: parseInt(e.target.value, 10) || 0 }
+                    : null
+                )
+              }
+            />
+          </div>
+          {/* Unit */}
+          <div className="space-y-2 flex-1">
+            <Label>Unit</Label>
+            <Select
+              value={material.Unit || ""}
+              onValueChange={(value) =>
+                setMaterial((prev) => (prev ? { ...prev, Unit: value } : null))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select unit" />
+              </SelectTrigger>
+              <SelectContent>
+                {units.map((unit) => (
+                  <SelectItem key={unit._id} value={unit.name}>
+                    {unit.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Price */}
@@ -338,13 +342,13 @@ export default function MaterialDetailsPage() {
         </div>
 
         {/* Created At (Read-Only) */}
-        <div className="space-y-2">
+        <div className="space-y-2 cursor-not-allowed">
           <Label>Created At</Label>
           <Input
             type="text"
             value={new Date(material.createdAt).toLocaleString()}
             readOnly
-            className="bg-gray-100 cursor-not-allowed"
+            className="cursor-not-allowed"
           />
         </div>
 
@@ -358,7 +362,7 @@ export default function MaterialDetailsPage() {
           <Button
             onClick={handleUpdate}
             variant="outline"
-            className="flex items-center gap-2 bg-white text-black hover:bg-green-500 hover:text-white"
+            className="md:flex hidden items-center gap-2 bg-white text-black hover:bg-green-500 hover:text-white"
           >
             <Save size={16} />
             Save

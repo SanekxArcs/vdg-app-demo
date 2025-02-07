@@ -83,10 +83,10 @@ export function ProjectDashboard({ project }: { project: any }) {
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-5 md:flex-row items-center justify-between">
         <div>
-          <div className="flex md:flex-row flex-col items-center gap-2">
-            <h2 className=" text-xl md:text-3xl font-bold tracking-tight text-nowrap">
+          <div className="flex items-center gap-2">
+            <h2 className="text-3xl font-bold tracking-tight text-nowrap">
               MPK: {project.number}
             </h2>
             <Badge
@@ -116,11 +116,8 @@ export function ProjectDashboard({ project }: { project: any }) {
             )}
           </div>
         </div>
-        <div className="flex md:flex-row gap-y-2 flex-col space-x-2">
-          <Button
-            variant="secondary"
-            className="hover:text-blue-600 hover:bg-gray-200 transition-all"
-          >
+        <div className="flex gap-2">
+          <Button variant="secondary" className="w-full md:w-auto">
             <a
               href={project.link}
               target="_blanc"
@@ -130,7 +127,11 @@ export function ProjectDashboard({ project }: { project: any }) {
               Project files
             </a>
           </Button>
-          <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
+          <Button
+            className="w-full md:w-auto"
+            variant="outline"
+            onClick={() => setIsDialogOpen(true)}
+          >
             <Settings className="w-4 h-4" />
           </Button>
         </div>
