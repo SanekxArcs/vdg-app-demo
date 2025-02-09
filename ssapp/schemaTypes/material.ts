@@ -5,7 +5,17 @@ export default defineType({
   title: 'Material',
   type: 'document',
   fields: [
-    defineField({name: 'name', title: 'Name', type: 'string'}),
+    defineField({
+      name: 'name',
+      title: 'Name',
+      type: 'string',
+    }),
+    defineField({
+      name: 'shopName',
+      title: 'Shop Name',
+      type: 'string',
+      description: 'Name of the shop where the material was bought',
+    }),
     defineField({
       name: 'description',
       title: 'Description',
@@ -22,8 +32,8 @@ export default defineType({
       title: 'Pieces',
       description: 'Number of pieces/m in the material, for calculation purposes',
       initialValue: 1,
-      required: true,
       type: 'number',
+      validation: (rule) => rule.required(),
     }),
     defineField({
       name: 'unit',
@@ -31,7 +41,11 @@ export default defineType({
       type: 'reference',
       to: [{type: 'pieceType'}],
     }),
-    defineField({name: 'priceNetto', title: 'Price Netto', type: 'number'}),
+    defineField({
+      name: 'priceNetto',
+      title: 'Price Netto',
+      type: 'number',
+    }),
 
     defineField({
       name: 'supplier',
@@ -39,6 +53,13 @@ export default defineType({
       type: 'reference',
       to: [{type: 'supplier'}],
     }),
+    defineField({
+      name: 'url',
+      title: 'URL',
+      type: 'url',
+      description: 'URL of the item in the shop',
+    }),
+
     defineField({
       name: 'category',
       title: 'Category',
@@ -57,9 +78,14 @@ export default defineType({
       name: 'createdAt',
       title: 'Created At',
       type: 'datetime',
-      initialValue: () => new Date().toISOString(), // Auto-set to current date & time
-      readOnly: true, // Prevent manual editing
+      initialValue: () => new Date().toISOString(),
+      readOnly: true,
     }),
-    defineField({name: 'updatedAt', title: 'Updated At', type: 'datetime', readOnly: true}),
+    defineField({
+      name: 'updatedAt',
+      title: 'Updated At',
+      type: 'datetime',
+      readOnly: true,
+    }),
   ],
 })

@@ -112,7 +112,7 @@ export default function MaterialsDashboard({
           <Package className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
+          <div className="text-5xl font-bold">
             {loading ? <Loader className="animate-spin" /> : totalMaterials}
           </div>
         </CardContent>
@@ -127,15 +127,15 @@ export default function MaterialsDashboard({
         <CardContent className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <CheckCircle className={STATUS_COLORS.green} />
-            <span className="text-lg">🟢 {greenCount} Good</span>
+            <span className="text-lg">{greenCount} Good</span>
           </div>
           <div className="flex items-center gap-2">
             <AlertTriangle className={STATUS_COLORS.yellow} />
-            <span className="text-lg">🟡 {yellowCount} Low Stock</span>
+            <span className="text-lg">{yellowCount} Low Stock</span>
           </div>
           <div className="flex items-center gap-2">
             <XCircle className={STATUS_COLORS.red} />
-            <span className="text-lg">🔴 {redCount} Critical</span>
+            <span className="text-lg">{redCount} Critical</span>
           </div>
         </CardContent>
       </Card>

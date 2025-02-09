@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
 import {
   Dialog,
   DialogContent,
@@ -22,15 +23,17 @@ import {
 import { Plus } from "lucide-react";
 import { client } from "@/sanity/client";
 import { toast } from "sonner";
+import { ScrollArea } from "../ui/scroll-area";
 
 export default function AddMaterialButton({
   refreshMaterials,
 }: {
   refreshMaterials: () => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  // Updated state with shopName and url fields
   const [material, setMaterial] = useState({
     name: "",
+    shopName: "", // New field for shop name
     description: "",
     category: "",
     supplier: "",
@@ -39,23 +42,32 @@ export default function AddMaterialButton({
     pieces: 1,
     minQuantity: 5,
     priceNetto: 0,
+    url: "", // New field for URL
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
 
+  // Dialog open state
+  const [isOpen, setIsOpen] = useState(false);
+
   // State for Categories, Suppliers, and Units
-  const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-  const [suppliers, setSuppliers] = useState<{ _id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ _id: string; name: string }[]>(
+    []
+  );
+  const [suppliers, setSuppliers] = useState<{ _id: string; name: string }[]>(
+    []
+  );
   const [units, setUnits] = useState<{ _id: string; name: string }[]>([]);
 
+  // Fetch options for selects from Sanity
   useEffect(() => {
     client
       .fetch(
         `{
-        "categories": *[_type == "category"]{_id, name},
-        "suppliers": *[_type == "supplier"]{_id, name},
-        "units": *[_type == "pieceType"]{_id, name}
-      }`
+          "categories": *[_type == "category"]{_id, name},
+          "suppliers": *[_type == "supplier"]{_id, name},
+          "units": *[_type == "pieceType"]{_id, name}
+        }`
       )
       .then((data) => {
         setCategories(data.categories);
@@ -65,9 +77,11 @@ export default function AddMaterialButton({
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
 
+  // Reset material state to default values (including new fields)
   const resetMaterial = () => {
     setMaterial({
       name: "",
+      shopName: "", // Reset shop name
       description: "",
       category: "",
       supplier: "",
@@ -76,26 +90,28 @@ export default function AddMaterialButton({
       pieces: 1,
       minQuantity: 5,
       priceNetto: 0,
+      url: "", // Reset URL
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
   };
 
+  // Handle form submission: create new material in Sanity
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await client.create({
         _type: "material",
         ...material,
-        category: { _type: "reference", _ref: material.category }, // ✅ Store as reference
-        supplier: { _type: "reference", _ref: material.supplier }, // ✅ Store as reference
-        unit: { _type: "reference", _ref: material.unit }, // ✅ Store as reference
+        category: { _type: "reference", _ref: material.category },
+        supplier: { _type: "reference", _ref: material.supplier },
+        unit: { _type: "reference", _ref: material.unit },
       });
 
       toast.success("Material added successfully!");
       setIsOpen(false);
-      refreshMaterials(); // ✅ Refresh the materials list
-      resetMaterial(); // ✅ Reset the form fields
+      refreshMaterials();
+      resetMaterial();
     } catch (error) {
       console.error("Sanity create error:", error);
       toast.error("Failed to add material.");
@@ -110,7 +126,9 @@ export default function AddMaterialButton({
           Add Material
         </Button>
       </DialogTrigger>
+      {/* Add scrollable styles here */}
       <DialogContent>
+      <ScrollArea className="max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Add New Material</DialogTitle>
         </DialogHeader>
@@ -127,6 +145,17 @@ export default function AddMaterialButton({
             />
           </div>
 
+          {/* Shop Name - new field */}
+          <div className="space-y-2">
+            <Label>Shop Name</Label>
+            <Input
+              value={material.shopName}
+              onChange={(e) =>
+                setMaterial({ ...material, shopName: e.target.value })
+              }
+            />
+          </div>
+
           {/* Description */}
           <div className="space-y-2">
             <Label>Description</Label>
@@ -138,8 +167,9 @@ export default function AddMaterialButton({
             />
           </div>
 
-          {/* Category */}
-          <div className="space-y-2">
+          <div className="flex gap-2">
+                      {/* Category */}
+          <div className="space-y-2 flex-1">
             <Label>Category</Label>
             <Select
               onValueChange={(value) =>
@@ -160,7 +190,7 @@ export default function AddMaterialButton({
           </div>
 
           {/* Supplier */}
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <Label>Supplier</Label>
             <Select
               onValueChange={(value) =>
@@ -178,6 +208,21 @@ export default function AddMaterialButton({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          </div>
+
+
+
+          {/* URL - new field */}
+          <div className="space-y-2">
+            <Label>URL</Label>
+            <Input
+              type="url"
+              value={material.url}
+              onChange={(e) =>
+                setMaterial({ ...material, url: e.target.value })
+              }
+            />
           </div>
 
           {/* Unit */}
@@ -264,7 +309,12 @@ export default function AddMaterialButton({
           </div>
 
           {/* Clear Fields Button */}
-          <Button type="button" variant="outline" onClick={resetMaterial} className="w-full">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={resetMaterial}
+            className="w-full"
+          >
             Clear Fields
           </Button>
 
@@ -273,6 +323,8 @@ export default function AddMaterialButton({
             Add Material
           </Button>
         </form>
+      
+      </ScrollArea>
       </DialogContent>
     </Dialog>
   );
