@@ -27,16 +27,17 @@ import {
   PieChart,
   Settings2,
   SquareTerminal,
+  CircleDollarSign,
 } from "lucide-react";
 import vdglogo from "@/../public/svgviewer-output (6).svg";
 
 // Define sidebar routes with their labels, icons, and destination URLs.
 const routes = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  // { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Materials", icon: Package, href: "/materials" },
   { label: "Projects", icon: FolderKanban, href: "/projects" },
-  { label: "Settings", icon: Settings, href: "/settings" },
-  { label: "Firm cost", icon: Settings, href: "/firmCosts" },
+  // { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "Firm cost", icon: CircleDollarSign, href: "/firmCosts" },
 ];
 
 /**
