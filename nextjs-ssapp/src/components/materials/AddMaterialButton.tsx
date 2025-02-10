@@ -24,6 +24,7 @@ import { Plus } from "lucide-react";
 import { client } from "@/sanity/client";
 import { toast } from "sonner";
 import { ScrollArea } from "../ui/scroll-area";
+import { nanoid } from "nanoid";
 
 export default function AddMaterialButton({
   refreshMaterials,
@@ -32,6 +33,7 @@ export default function AddMaterialButton({
 }) {
   // Updated state with shopName and url fields
   const [material, setMaterial] = useState({
+    _id: nanoid(), // Generate a new ID
     name: "",
     shopName: "", // New field for shop name
     description: "",
@@ -80,6 +82,7 @@ export default function AddMaterialButton({
   // Reset material state to default values (including new fields)
   const resetMaterial = () => {
     setMaterial({
+      _id: nanoid(), // Generate a new ID
       name: "",
       shopName: "", // Reset shop name
       description: "",

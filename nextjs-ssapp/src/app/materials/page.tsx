@@ -32,6 +32,7 @@ import AddMaterialButton from "@/components/materials/AddMaterialButton";
 import { toast } from "sonner";
 import MaterialsDashboard from "@/components/materials/MaterialsDashboard";
 import EditMaterialDialog from "@/components/materials/EditMaterialDialog";
+import BulkImportMaterials from "@/components/materials/BulkImportMaterials";
 
 /** Material interface matching the GROQ query fields */
 interface Material {
@@ -68,6 +69,8 @@ const DATA_QUERY = `{
   "materials": *[_type == "material"] {
     _id,
     name,
+    shopName,
+    url,
     description,
     quantity,
     pieces,
@@ -232,6 +235,7 @@ export default function MaterialsPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Materials</h2>
           <div className="flex items-center space-x-2">
+            <BulkImportMaterials refreshMaterials={fetchMaterials} />
             <AddMaterialButton refreshMaterials={fetchMaterials} />
           </div>
         </div>
@@ -286,32 +290,32 @@ export default function MaterialsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead onClick={() => requestSort("name")}>
-                  <div className="flex items-center flex-nowrap">
+                  <div className=" cursor-pointer flex items-center flex-nowrap">
                     Name {getSortIcon("name")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("Category")}>
-                  <div className="flex items-center flex-nowrap">
+                  <div className=" cursor-pointer flex items-center flex-nowrap">
                     Category {getSortIcon("Category")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("Supplier")}>
-                  <div className="flex items-center flex-nowrap">
+                  <div className=" cursor-pointer flex items-center flex-nowrap">
                     Supplier {getSortIcon("Supplier")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("quantity")}>
-                  <div className="flex items-center flex-nowrap">
+                  <div className=" cursor-pointer flex items-center flex-nowrap">
                     Quantity {getSortIcon("quantity")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("priceNetto")}>
-                  <div className="flex items-center flex-nowrap">
+                  <div className=" cursor-pointer flex items-center flex-nowrap">
                     Price {getSortIcon("priceNetto")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("updatedAt")}>
-                  <div className="flex items-center flex-nowrap">
+                  <div className="flex items-center flex-nowrap cursor-pointer">
                     Last Update {getSortIcon("updatedAt")}
                   </div>
                 </TableHead>
@@ -323,7 +327,7 @@ export default function MaterialsPage() {
                 filteredMaterials.map((material) => (
                   <TableRow
                     key={material._id}
-                    className="cursor-pointer"
+                    className="cursor-default"
                     // onClick={() => router.push(`/materials/${material._id}`)}
                   >
                     <TableCell

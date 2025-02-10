@@ -249,7 +249,7 @@ export default function ProjectsPage() {
 
                     <TableCell>
                       <Link href={`/projects/${project.id}`}>
-                        <Button variant="outline" className="hover:bg-gray-300">
+                        <Button variant="outline">
                           Open
                         </Button>
                       </Link>

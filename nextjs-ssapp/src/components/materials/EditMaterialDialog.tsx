@@ -228,6 +228,17 @@ export default function EditMaterialDialog({
                 }
               />
             </div>
+            {/* URL */}
+            <div className="space-y-2">
+              <Label>URL</Label>
+              <Input
+                type="url"
+                value={editedMaterial.url}
+                onChange={(e) =>
+                  setEditedMaterial({ ...editedMaterial, url: e.target.value })
+                }
+              />
+            </div>
             {/* Description */}
             <div className="space-y-2">
               <Label>Description</Label>
@@ -241,7 +252,8 @@ export default function EditMaterialDialog({
                 }
               />
             </div>
-            {/* Category */}
+            <div className="grid grid-cols-2 gap-2">
+                 {/* Category */}
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
@@ -283,17 +295,9 @@ export default function EditMaterialDialog({
                 </SelectContent>
               </Select>
             </div>
-            {/* URL */}
-            <div className="space-y-2">
-              <Label>URL</Label>
-              <Input
-                type="url"
-                value={editedMaterial.url}
-                onChange={(e) =>
-                  setEditedMaterial({ ...editedMaterial, url: e.target.value })
-                }
-              />
             </div>
+           
+            
             {/* Unit */}
             <div className="space-y-2">
               <Label>Unit</Label>
@@ -389,6 +393,7 @@ export default function EditMaterialDialog({
             {/* Action buttons */}
             <div className="flex justify-end space-x-2">
               <Button
+              
                 type="button"
                 variant="destructive"
                 onClick={handleDelete}
@@ -396,7 +401,7 @@ export default function EditMaterialDialog({
                 <Trash className="mr-2 h-4 w-4" />
                 Delete
               </Button>
-              <Button type="submit">
+              <Button className="flex-1" type="submit">
                 <Save className="mr-2 h-4 w-4" />
                 Save
               </Button>
