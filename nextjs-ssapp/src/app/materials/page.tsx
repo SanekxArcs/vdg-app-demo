@@ -235,7 +235,6 @@ export default function MaterialsPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Materials</h2>
           <div className="flex items-center space-x-2">
-            <BulkImportMaterials refreshMaterials={fetchMaterials} />
             <AddMaterialButton refreshMaterials={fetchMaterials} />
           </div>
         </div>
@@ -244,8 +243,8 @@ export default function MaterialsPage() {
         <MaterialsDashboard refreshMaterials={fetchMaterials} />
 
         {/* Search and Filter Controls */}
-        <div className="flex items-center space-x-2">
-          {/* Search field: filters name, Category, Supplier */}
+        <div className="flex items-center md:flex-row flex-col gap-2">
+          <div className="flex items-center space-x-2">{/* Search field: filters name, Category, Supplier */}
           <Input
             placeholder="Search materials..."
             className="max-w-sm"
@@ -281,7 +280,9 @@ export default function MaterialsPage() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select></div>
+          
+          <BulkImportMaterials refreshMaterials={fetchMaterials} />
         </div>
 
         {/* Materials Table */}
