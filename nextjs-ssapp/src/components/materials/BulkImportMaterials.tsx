@@ -20,18 +20,21 @@ interface Material {
   name: string;
   shopName?: string;
   description?: string;
-  category: string; // Either the mapped ID or the raw value
+  category: string; // either the mapped ID or the raw value
   supplier: string;
   unit: string;
-  quantity: number;
+  quantity: number; // quantity from the pasted data
   pieces: number;
   minQuantity?: number;
   priceNetto: number;
   url?: string;
-  // For bulk import bookkeeping:
+  // Bulk import bookkeeping:
   existingId?: string;
   oldPrice?: number;
-  needsUpdate?: boolean;
+  oldQuantity?: number;
+  newQuantity?: number;
+  totalQuantity?: number;
+  needsUpdate?: boolean; // if price is different
 }
 
 export default function BulkImportMaterials({
@@ -43,7 +46,7 @@ export default function BulkImportMaterials({
   const [rawData, setRawData] = useState(""); // Raw pasted text
   const [parsedMaterials, setParsedMaterials] = useState<Material[]>([]);
 
-  // Options for mapping names to IDs.
+  // Options to map names to IDs.
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>(
     []
   );
@@ -51,10 +54,10 @@ export default function BulkImportMaterials({
     []
   );
   const [units, setUnits] = useState<{ _id: string; name: string }[]>([]);
-  // Existing materials from Sanity (only fields needed for matching)
+  // Existing materials fetched from Sanity (including quantity)
   const [existingMaterials, setExistingMaterials] = useState<Material[]>([]);
 
-  // Fetch reference options (categories, suppliers, units)
+  // Fetch reference options.
   useEffect(() => {
     client
       .fetch(
@@ -72,10 +75,12 @@ export default function BulkImportMaterials({
       .catch((error) => console.error("Error fetching options:", error));
   }, []);
 
-  // Helper to fetch existing materials from Sanity.
+  // Fetch existing materials (including quantity) for matching.
   const fetchExistingMaterials = () => {
     client
-      .fetch(`*[_type == "material"]{_id, name, shopName, priceNetto}`)
+      .fetch(
+        `*[_type == "material"]{_id, name, shopName, priceNetto, quantity}`
+      )
       .then((data) => {
         setExistingMaterials(data);
       })
@@ -84,15 +89,14 @@ export default function BulkImportMaterials({
       );
   };
 
-  // Fetch existing materials on mount.
   useEffect(() => {
     fetchExistingMaterials();
   }, []);
 
   /**
-   * Helper function to render a validated value for Category, Supplier, or Unit.
-   * If the passed value (an ID) is found among options, shows a green check and the option’s name;
-   * Otherwise, shows a red X.
+   * A helper to render validated fields for Category, Supplier, or Unit.
+   * If the value (which should be an ID) is found among options, shows a green check with the option’s name;
+   * otherwise, shows a red X with the raw value.
    */
   const renderValidatedValue = (
     value: string,
@@ -116,39 +120,36 @@ export default function BulkImportMaterials({
     }
   };
 
-  /** Parse the raw pasted data into an array of Material objects */
-  // Custom parser to split a line by semicolon, respecting quoted fields
+  // Custom parser to split a line by semicolon while respecting quoted fields.
   const parseLine = (line: string): string[] => {
     const fields: string[] = [];
     let currentField = "";
     let inQuotes = false;
-
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-
       if (char === '"') {
-        // If we're already in quotes and the next character is also a quote,
-        // then add a literal quote and skip the next character.
         if (inQuotes && line[i + 1] === '"') {
           currentField += '"';
-          i++; // Skip next quote
+          i++; // Skip the escaped quote.
         } else {
-          inQuotes = !inQuotes; // Toggle quoting state
+          inQuotes = !inQuotes;
         }
       } else if (char === ";" && !inQuotes) {
-        // Delimiter encountered outside quotes; push the current field.
         fields.push(currentField);
         currentField = "";
       } else {
         currentField += char;
       }
     }
-    // Push the last field
     fields.push(currentField);
-    return fields.map((field) => field.trim());
+    return fields.map((f) => f.trim());
   };
 
-  // Updated parseData function using the custom parser:
+  /**
+   * Parse the raw pasted text.
+   * Expected format (fields separated by semicolon):
+   * Name; Shop Name; Description; Category; Supplier; Unit; Quantity; Pieces; Min Quantity; Price; URL
+   */
   const parseData = () => {
     try {
       const lines = rawData
@@ -156,9 +157,6 @@ export default function BulkImportMaterials({
         .map((line) => line.trim())
         .filter(Boolean);
       let materials: Material[] = lines.map((line) => {
-        // Use parseLine to split the line into fields.
-        // Expected order:
-        // Name; Shop Name; Description; Category; Supplier; Unit; Quantity; Pieces; Min Quantity; Price; URL
         const fields = parseLine(line);
         const [
           name,
@@ -173,14 +171,13 @@ export default function BulkImportMaterials({
           priceNetto,
           url,
         ] = fields;
-
         return {
           name,
           shopName: shopName || "",
           description: description || "",
-          category, // raw value; will be mapped to ID if found
-          supplier, // raw value; will be mapped to ID if found
-          unit, // raw value; will be mapped to ID if found
+          category, // initially the raw value; will be mapped below
+          supplier,
+          unit,
           quantity: quantity === "" ? 0 : Number(quantity),
           pieces: pieces === "" ? 1 : Number(pieces),
           minQuantity: minQuantity === "" ? 5 : Number(minQuantity),
@@ -190,7 +187,7 @@ export default function BulkImportMaterials({
         };
       });
 
-      // Map category, supplier, and unit names to their reference IDs if possible.
+      // Map category, supplier, and unit names to their IDs if possible.
       materials = materials.map((material) => ({
         ...material,
         category:
@@ -207,17 +204,23 @@ export default function BulkImportMaterials({
           )?._id || material.unit,
       }));
 
-      // Check for existing materials by comparing name and shopName.
+      // Check if each parsed material already exists (by comparing name and shopName).
       materials = materials.map((material) => {
         const existing = existingMaterials.find(
           (m) =>
             (m.shopName || "").trim().toLowerCase() ===
-              (material.shopName || "").trim().toLowerCase()
+            (material.shopName || "").trim().toLowerCase()
         );
         if (existing) {
           material.existingId = existing._id;
           material.oldPrice = existing.priceNetto;
-          material.needsUpdate = existing.priceNetto !== material.priceNetto;
+          material.oldQuantity = existing.quantity;
+          material.newQuantity = material.quantity;
+          material.totalQuantity = (existing.quantity || 0) + material.quantity;
+          // Flag update if price differs or new quantity is provided.
+          material.needsUpdate =
+            existing.priceNetto !== material.priceNetto ||
+            material.quantity > 0;
         } else {
           material.needsUpdate = false;
         }
@@ -231,25 +234,26 @@ export default function BulkImportMaterials({
     }
   };
 
-  /** Save (create or update) the parsed materials in Sanity.
-   * - If a material exists and the price is unchanged, it’s skipped.
-   * - If it exists but the price is different, update the price and updatedAt.
-   * - Otherwise, create a new material.
+  /**
+   * Save materials:
+   * - For existing items, update quantity (sum old + new) and price if different.
+   * - For new items, create a new material.
+   * After saving, clear the input and refresh the existing materials.
    */
   const saveMaterials = async () => {
     try {
       await Promise.all(
         parsedMaterials.map(async (material) => {
           if (material.existingId) {
-            if (material.needsUpdate) {
-              await client
-                .patch(material.existingId)
-                .set({
-                  priceNetto: material.priceNetto,
-                  updatedAt: new Date().toISOString(),
-                })
-                .commit();
+            // Prepare patch update: always update quantity to totalQuantity.
+            const patchObj: any = {
+              quantity: material.totalQuantity,
+              updatedAt: new Date().toISOString(),
+            };
+            if (material.oldPrice !== material.priceNetto) {
+              patchObj.priceNetto = material.priceNetto;
             }
+            await client.patch(material.existingId).set(patchObj).commit();
           } else {
             await client.create({
               _type: "material",
@@ -266,20 +270,20 @@ export default function BulkImportMaterials({
       toast.success("Bulk update successful!");
       setIsOpen(false);
       refreshMaterials();
-      // Clear the raw input and preview after saving
+      // Clear input and parsed preview.
       setRawData("");
       setParsedMaterials([]);
-      // Optionally, re-fetch existing materials
       fetchExistingMaterials();
     } catch (error) {
       console.error("Bulk save error:", error);
       toast.error("Failed to save materials.");
     }
   };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Bulk Import</Button>
+        <Button className="w-full md:w-32" variant="outline">Bulk Import</Button>
       </DialogTrigger>
       <DialogContent>
         <ScrollArea className="max-h-[90vh]">
@@ -326,7 +330,15 @@ Name; Shop Name; Description; Category; Supplier; Unit; Quantity; Pieces; Min Qu
                     {renderValidatedValue(material.unit, units)}
                   </div>
                   <div>
-                    <strong>Quantity:</strong> {material.quantity}
+                    <strong>Quantity:</strong>{" "}
+                    {material.existingId ? (
+                      <span>
+                        Old: {material.oldQuantity}, New: {material.newQuantity}
+                        , Total: {material.totalQuantity}
+                      </span>
+                    ) : (
+                      <span>{material.quantity}</span>
+                    )}
                   </div>
                   <div>
                     <strong>Pieces:</strong> {material.pieces}
@@ -335,7 +347,14 @@ Name; Shop Name; Description; Category; Supplier; Unit; Quantity; Pieces; Min Qu
                     <strong>Min Quantity:</strong> {material.minQuantity}
                   </div>
                   <div>
-                    <strong>Price:</strong> {material.priceNetto} zł
+                    <strong>Price:</strong> {material.priceNetto} zł{" "}
+                    {material.existingId &&
+                      material.oldPrice !== material.priceNetto && (
+                        <span className="text-orange-600">
+                          (Old: {material.oldPrice} zł vs New:{" "}
+                          {material.priceNetto} zł)
+                        </span>
+                      )}
                   </div>
                   <div>
                     <strong>URL:</strong> {material.url}
@@ -346,8 +365,7 @@ Name; Shop Name; Description; Category; Supplier; Unit; Quantity; Pieces; Min Qu
                       material.needsUpdate ? (
                         <span className="flex items-center text-orange-600">
                           <AlertTriangle className="h-4 w-4 mr-1" />
-                          Old: {material.oldPrice} zł vs New:{" "}
-                          {material.priceNetto} zł
+                          Update needed
                         </span>
                       ) : (
                         <span className="flex items-center text-green-600">

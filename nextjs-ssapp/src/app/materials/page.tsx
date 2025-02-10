@@ -20,7 +20,6 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-
 import { client } from "@/sanity/client";
 import {
   ArrowDownAZ,
@@ -29,15 +28,16 @@ import {
   ArrowDown10,
 } from "lucide-react";
 import AddMaterialButton from "@/components/materials/AddMaterialButton";
-import { toast } from "sonner";
-import MaterialsDashboard from "@/components/materials/MaterialsDashboard";
-import EditMaterialDialog from "@/components/materials/EditMaterialDialog";
 import BulkImportMaterials from "@/components/materials/BulkImportMaterials";
+import EditMaterialDialog from "@/components/materials/EditMaterialDialog";
+import MaterialsDashboard from "@/components/materials/MaterialsDashboard";
+import { toast } from "sonner";
 
 /** Material interface matching the GROQ query fields */
 interface Material {
   _id: string;
   name: string;
+  shopName?: string;
   description: string;
   quantity: number;
   pieces: number;
@@ -65,6 +65,7 @@ type SortConfig = {
   direction: "asc" | "desc";
 };
 
+/** The query returns an additional 'shopName' field */
 const DATA_QUERY = `{
   "materials": *[_type == "material"] {
     _id,
@@ -87,6 +88,19 @@ const DATA_QUERY = `{
   "pieceType": *[_type == "pieceType"][] { _id, name }
 }`;
 
+/**
+ * Helper function to calculate stock status.
+ * - "Critical": quantity < minQuantity
+ * - "Low Stock": quantity >= minQuantity and quantity < minQuantity + 10
+ * - "Good": quantity >= minQuantity + 10
+ */
+function getStockStatus(material: Material): "Good" | "Low Stock" | "Critical" {
+  const min = material.minQuantity ?? 0;
+  if (material.quantity < min) return "Critical";
+  if (material.quantity < min + 10) return "Low Stock";
+  return "Good";
+}
+
 export default function MaterialsPage() {
   const router = useRouter();
 
@@ -103,6 +117,7 @@ export default function MaterialsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedSupplier, setSelectedSupplier] = useState("all");
+  const [selectedStockStatus, setSelectedStockStatus] = useState("all");
 
   // Single sort configuration with default sort by name ascending
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -155,7 +170,7 @@ export default function MaterialsPage() {
     return 0;
   });
 
-  /** Filter the sorted materials based on search query, category, and supplier */
+  /** Filter the sorted materials based on search query, category, supplier, and stock status */
   const filteredMaterials = sortedMaterials.filter((material) => {
     // Filter by search query (case-insensitive) on name, Category, or Supplier
     if (searchQuery) {
@@ -176,6 +191,13 @@ export default function MaterialsPage() {
     }
     // Filter by Supplier if one is selected
     if (selectedSupplier !== "all" && material.Supplier !== selectedSupplier) {
+      return false;
+    }
+    // Filter by Stock Status if one is selected
+    if (
+      selectedStockStatus !== "all" &&
+      getStockStatus(material) !== selectedStockStatus
+    ) {
       return false;
     }
     return true;
@@ -244,45 +266,59 @@ export default function MaterialsPage() {
 
         {/* Search and Filter Controls */}
         <div className="flex items-center md:flex-row flex-col gap-2">
-          <div className="flex items-center space-x-2">{/* Search field: filters name, Category, Supplier */}
-          <Input
-            placeholder="Search materials..."
-            className="max-w-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-
-          {/* Category filter select */}
-          <Select onValueChange={(val) => setSelectedCategory(val)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat._id} value={cat.name}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Supplier filter select */}
-          <Select onValueChange={(val) => setSelectedSupplier(val)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Supplier" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {suppliers.map((sup) => (
-                <SelectItem key={sup._id} value={sup.name}>
-                  {sup.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select></div>
-          
-          <BulkImportMaterials refreshMaterials={fetchMaterials} />
+          <div className="flex items-center space-x-2">
+            {/* Search Field */}
+            <Input
+              placeholder="Search materials..."
+              className="max-w-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {/* Category Filter */}
+            <Select onValueChange={(val) => setSelectedCategory(val)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat._id} value={cat.name}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Supplier Filter */}
+            <Select onValueChange={(val) => setSelectedSupplier(val)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Supplier" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {suppliers.map((sup) => (
+                  <SelectItem key={sup._id} value={sup.name}>
+                    {sup.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Stock Status Filter */}
+            <Select onValueChange={(val) => setSelectedStockStatus(val)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Stock Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="Good">Good</SelectItem>
+                <SelectItem value="Low Stock">Low Stock</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            {/* Bulk Import Button */}
+            <BulkImportMaterials refreshMaterials={fetchMaterials} />
+          </div>
         </div>
 
         {/* Materials Table */}
@@ -291,32 +327,32 @@ export default function MaterialsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead onClick={() => requestSort("name")}>
-                  <div className=" cursor-pointer flex items-center flex-nowrap">
+                  <div className="cursor-pointer flex items-center flex-nowrap">
                     Name {getSortIcon("name")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("Category")}>
-                  <div className=" cursor-pointer flex items-center flex-nowrap">
+                  <div className="cursor-pointer flex items-center flex-nowrap">
                     Category {getSortIcon("Category")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("Supplier")}>
-                  <div className=" cursor-pointer flex items-center flex-nowrap">
+                  <div className="cursor-pointer flex items-center flex-nowrap">
                     Supplier {getSortIcon("Supplier")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("quantity")}>
-                  <div className=" cursor-pointer flex items-center flex-nowrap">
+                  <div className="cursor-pointer flex items-center flex-nowrap">
                     Quantity {getSortIcon("quantity")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("priceNetto")}>
-                  <div className=" cursor-pointer flex items-center flex-nowrap">
+                  <div className="cursor-pointer flex items-center flex-nowrap">
                     Price {getSortIcon("priceNetto")}
                   </div>
                 </TableHead>
                 <TableHead onClick={() => requestSort("updatedAt")}>
-                  <div className="flex items-center flex-nowrap cursor-pointer">
+                  <div className="cursor-pointer flex items-center flex-nowrap">
                     Last Update {getSortIcon("updatedAt")}
                   </div>
                 </TableHead>
@@ -326,11 +362,7 @@ export default function MaterialsPage() {
             <TableBody>
               {filteredMaterials.length > 0 ? (
                 filteredMaterials.map((material) => (
-                  <TableRow
-                    key={material._id}
-                    className="cursor-default"
-                    // onClick={() => router.push(`/materials/${material._id}`)}
-                  >
+                  <TableRow key={material._id} className="cursor-default">
                     <TableCell
                       className={`border-l-4 ${
                         material.quantity >= (material.minQuantity ?? 0) + 10
@@ -345,7 +377,8 @@ export default function MaterialsPage() {
                     <TableCell>{material.Category}</TableCell>
                     <TableCell>{material.Supplier}</TableCell>
                     <TableCell>
-                      {material.quantity} {material.Unit}
+                      {material.quantity}{" "}{material.Unit}
+                      
                     </TableCell>
                     <TableCell>{material.priceNetto} zł</TableCell>
                     <TableCell>
@@ -364,7 +397,7 @@ export default function MaterialsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
+                  <TableCell colSpan={7} className="text-center py-4">
                     No materials found.
                   </TableCell>
                 </TableRow>
