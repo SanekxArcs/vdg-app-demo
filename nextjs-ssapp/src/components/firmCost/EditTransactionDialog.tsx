@@ -26,8 +26,8 @@ interface Partner {
   share?: number;
 }
 
-// Extend the possible shapes of partner data
-type PartnerReference = { type: "reference"; _ref: string };
+// Extend the possible shapes of partner data using the proper key "_type"
+type PartnerReference = { _type: "reference"; _ref: string };
 
 export interface Transaction {
   _id: string;
@@ -105,8 +105,8 @@ export const EditTransactionDialog: FC<EditTransactionDialogProps> = ({
       amount: parseFloat(amount),
       type,
       category,
-      // Use the Sanity reference shape
-      partner: { type: "reference", _ref: partner },
+      // Use the proper Sanity reference shape (with _type)
+      partner: { _type: "reference", _ref: partner },
       date: new Date(date).toISOString(),
     };
     onSave(updatedTransaction);
