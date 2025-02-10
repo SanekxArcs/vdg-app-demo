@@ -36,6 +36,7 @@ const routes = [
   { label: "Materials", icon: Package, href: "/materials" },
   { label: "Projects", icon: FolderKanban, href: "/projects" },
   { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "Firm cost", icon: Settings, href: "/firmCosts" },
 ];
 
 /**

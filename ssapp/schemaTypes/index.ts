@@ -7,7 +7,10 @@ import typ from './typ'
 import status from './status'
 import firm from './firm'
 import ekipa from './ekipa'
-import admins from './Admins'
+import admins from './admins'
+import partner from './partner'
+import transaction from './transaction'
+
 
 export const schemaTypes = [
   material,
@@ -19,6 +22,8 @@ export const schemaTypes = [
   status,
   firm,
   ekipa,
-  admins
+  admins,
+  partner,
+  transaction
 
 ]
