@@ -20,14 +20,14 @@ import {
 } from "@/components/ui/dialog";
 
 // Define the types for a partner and transaction
-interface Partner {
+export interface Partner {
   _id: string;
   name: string;
   share?: number;
 }
 
 // Extend the possible shapes of partner data using the proper key "_type"
-type PartnerReference = { _type: "reference"; _ref: string };
+export type PartnerReference = { _type: "reference"; _ref: string };
 
 export interface Transaction {
   _id: string;
@@ -38,7 +38,7 @@ export interface Transaction {
   partner:
     | string
     | { _id: string; name?: string; share?: number }
-    | PartnerReference
+    | { type: "reference"; _ref: string }
     | null;
   date: string;
 }
@@ -97,20 +97,20 @@ export const EditTransactionDialog: FC<EditTransactionDialogProps> = ({
   }, [transaction]);
 
   // Prepare and send the updated transaction object to onSave
-  const handleSave = () => {
-    if (!transaction) return;
-    const updatedTransaction: Transaction = {
-      ...transaction,
-      description,
-      amount: parseFloat(amount),
-      type,
-      category,
-      // Use the proper Sanity reference shape (with _type)
-      partner: { _type: "reference", _ref: partner },
-      date: new Date(date).toISOString(),
-    };
-    onSave(updatedTransaction);
+const handleSave = () => {
+  if (!transaction) return;
+  const updatedTransaction: Transaction = {
+    ...transaction,
+    description,
+    amount: parseFloat(amount),
+    type,
+    category,
+    // Use the correct reference shape:
+    partner: partner ? { _id: partner } : null,
+    date: new Date(date).toISOString(),
   };
+  onSave(updatedTransaction);
+};
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
