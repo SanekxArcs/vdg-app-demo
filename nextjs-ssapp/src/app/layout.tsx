@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
+// Load Google Fonts with CSS variables
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -24,7 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // Adding suppressHydrationWarning avoids React warnings when client-side theme changes update <html> attributes.
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

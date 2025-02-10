@@ -283,7 +283,9 @@ export default function BulkImportMaterials({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full md:w-32" variant="outline">Bulk Import</Button>
+        <Button className="w-full md:w-auto" variant="outline">
+          Bulk Import
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <ScrollArea className="max-h-[90vh]">

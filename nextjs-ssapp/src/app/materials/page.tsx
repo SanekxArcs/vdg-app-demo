@@ -265,18 +265,23 @@ export default function MaterialsPage() {
         <MaterialsDashboard refreshMaterials={fetchMaterials} />
 
         {/* Search and Filter Controls */}
-        <div className="flex items-center md:flex-row flex-col gap-2">
-          <div className="flex items-center space-x-2">
-            {/* Search Field */}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          {/* First group: Search, Category, Supplier */}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            {/* Search Field – full width on mobile, limited width on desktop */}
             <Input
               placeholder="Search materials..."
-              className="max-w-sm"
+              className="w-full md:max-w-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            {/* Category Filter */}
-            <Select onValueChange={(val) => setSelectedCategory(val)}>
-              <SelectTrigger className="w-[180px]">
+
+            {/* Category Filter – full width on mobile, fixed width on desktop */}
+            <Select
+              onValueChange={(val) => setSelectedCategory(val)}
+              
+            >
+              <SelectTrigger className="w-full md:w-44">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -288,9 +293,13 @@ export default function MaterialsPage() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Supplier Filter */}
-            <Select onValueChange={(val) => setSelectedSupplier(val)}>
-              <SelectTrigger className="w-[180px]">
+
+            {/* Supplier Filter – full width on mobile, fixed width on desktop */}
+            <Select
+              onValueChange={(val) => setSelectedSupplier(val)}
+              
+            >
+              <SelectTrigger className="w-full md:w-44">
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
               <SelectContent>
@@ -302,9 +311,16 @@ export default function MaterialsPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Second group: Stock Status and Bulk Import */}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
             {/* Stock Status Filter */}
-            <Select onValueChange={(val) => setSelectedStockStatus(val)}>
-              <SelectTrigger className="w-[180px]">
+            <Select
+              onValueChange={(val) => setSelectedStockStatus(val)}
+              
+            >
+              <SelectTrigger className="w-full md:w-44">
                 <SelectValue placeholder="Stock Status" />
               </SelectTrigger>
               <SelectContent>
@@ -314,10 +330,12 @@ export default function MaterialsPage() {
                 <SelectItem value="Critical">Critical</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div>
+
             {/* Bulk Import Button */}
-            <BulkImportMaterials refreshMaterials={fetchMaterials} />
+            {/* If BulkImportMaterials doesn't accept className, wrap it in a div with the classes */}
+            <BulkImportMaterials
+              refreshMaterials={fetchMaterials}
+            />
           </div>
         </div>
 
@@ -377,8 +395,7 @@ export default function MaterialsPage() {
                     <TableCell>{material.Category}</TableCell>
                     <TableCell>{material.Supplier}</TableCell>
                     <TableCell>
-                      {material.quantity}{" "}{material.Unit}
-                      
+                      {material.quantity} {material.Unit}
                     </TableCell>
                     <TableCell>{material.priceNetto} zł</TableCell>
                     <TableCell>
