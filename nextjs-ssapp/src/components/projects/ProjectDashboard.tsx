@@ -1,9 +1,34 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { groq } from "next-sanity";
+import { client } from "@/sanity/client";
+import { nanoid } from "nanoid";
+import { toast } from "sonner";
+
+// UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Icons from lucide-react
 import {
   Calendar,
   DollarSign,
@@ -12,21 +37,49 @@ import {
   ExternalLink,
   Settings,
 } from "lucide-react";
+
+// Custom Dialog for additional settings
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
-import { client } from "@/sanity/client";
-import { groq } from "next-sanity";
-import { useParams } from "next/navigation";
+import { Label } from "../ui/label";
+
+// Helper: Format a date for display
+const formatDate = (date: Date | string) =>
+  new Date(date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+// Helper: Format a date to a datetime-local input value
+const formatDatetimeLocal = (date: string) => {
+  const d = new Date(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+};
 
 export function ProjectDashboard() {
-  // Get project id from URL params
+  // Get project id from URL params.
   const { id } = useParams() as { id: string };
+  const router = useRouter();
 
-  // Local state for project data and dialog visibility
+  // Local state for project data and dialog visibility.
   const [project, setProject] = useState<any>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [isTimelineDialogOpen, setIsTimelineDialogOpen] = useState(false);
   const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false);
 
-  // Sanity query to load only the necessary fields
+  // State for timeline editing.
+  const [newStatus, setNewStatus] = useState("");
+  const [newStartDate, setNewStartDate] = useState("");
+  const [newEndDate, setNewEndDate] = useState("");
+  const [newDeadlineDate, setNewDeadlineDate] = useState("");
+
+  // List of available statuses for selection.
+  const [statuses, setStatuses] = useState<{ _id: string; name: string }[]>([]);
+
+  // GROQ query to load only the necessary fields.
   const query = groq`
     *[_type == "project" && _id == $id][0]{
       _id,
@@ -39,13 +92,13 @@ export function ProjectDashboard() {
       endDate,
       deadlineDate,
       totalBudget,
-      status-> { name },
+      status-> { _id, name },
       ekipa-> { name },
       firm-> { name }
     }
   `;
 
-  // Fetch project data from Sanity
+  // Fetch project data from Sanity.
   const fetchProject = async () => {
     try {
       const data = await client.fetch(query, { id });
@@ -55,32 +108,68 @@ export function ProjectDashboard() {
     }
   };
 
-  // Load project data on mount and refresh every 60 seconds
+  // Fetch project data on mount.
   useEffect(() => {
     if (!id) return;
     fetchProject();
-    const interval = setInterval(fetchProject, 60000); // refresh every 60 sec
-    return () => clearInterval(interval);
   }, [id]);
 
-  // Show a loading state until project data is available
-  if (!project) return <p>Loading project data...</p>;
+  // Fetch available statuses from Sanity.
+  useEffect(() => {
+    async function fetchStatuses() {
+      try {
+        const data = await client.fetch(`*[_type=="status"]{ _id, name }`);
+        setStatuses(data);
+        if (data.length > 0 && project?.status?._id) {
+          setNewStatus(project.status._id);
+        }
+      } catch (error) {
+        console.error("Error fetching statuses:", error);
+      }
+    }
+    fetchStatuses();
+  }, [project]);
 
-  // Format a date for display
-  const formatDate = (date: Date | string) =>
-    new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-  // Build a Google Maps URL from the project address details
+  // Build a Google Maps URL from the project address details.
   const getGoogleMapsUrl = () => {
     const address = `${project.address}, ${project.city}, ${project.postal}`;
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
       address
     )}`;
   };
+
+  // Open the timeline dialog and pre-populate fields.
+  const handleOpenTimelineDialog = () => {
+    if (!project) return;
+    setNewStatus(project.status?._id || statuses[0]?._id || "");
+    setNewStartDate(formatDatetimeLocal(project.startDate));
+    setNewEndDate(project.endDate ? formatDatetimeLocal(project.endDate) : "");
+    setNewDeadlineDate(formatDatetimeLocal(project.deadlineDate));
+    setIsTimelineDialogOpen(true);
+  };
+
+  // Handler to update timeline fields.
+  const handleUpdateTimeline = async () => {
+    if (!project) return;
+    try {
+      await client
+        .patch(project._id)
+        .set({
+          startDate: newStartDate,
+          endDate: newEndDate,
+          deadlineDate: newDeadlineDate,
+          status: { _type: "reference", _ref: newStatus },
+        })
+        .commit();
+      setIsTimelineDialogOpen(false);
+      fetchProject();
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating timeline:", error);
+    }
+  };
+
+  if (!project) return <p>Loading project data...</p>;
 
   return (
     <>
@@ -123,7 +212,7 @@ export function ProjectDashboard() {
           <Button
             className="w-full md:w-auto"
             variant="outline"
-            onClick={() => setIsDialogOpen(true)}
+            onClick={() => setIsSettingsDialogOpen(true)}
           >
             <Settings className="w-4 h-4" />
           </Button>
@@ -156,7 +245,10 @@ export function ProjectDashboard() {
         </Card>
 
         {/* Timeline Card */}
-        <Card>
+        <Card
+          className="cursor-pointer hover:-translate-y-1 transition-all hover:shadow-xl"
+          onClick={handleOpenTimelineDialog}
+        >
           <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="font-medium">Timeline</CardTitle>
             <Calendar className="text-muted-foreground" />
@@ -202,9 +294,80 @@ export function ProjectDashboard() {
         </Card>
       </div>
 
+      {/* Timeline Edit Dialog */}
+      <Dialog
+        open={isTimelineDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setIsTimelineDialogOpen(false);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Timeline Details</DialogTitle>
+            <DialogDescription>
+              Update the project status, start, end, and deadline dates.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Status Selector */}
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map((status) => (
+                    <SelectItem key={status._id} value={status._id}>
+                      {status.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Start Date */}
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input
+                type="datetime-local"
+                value={newStartDate}
+                onChange={(e) => setNewStartDate(e.target.value)}
+              />
+            </div>
+            {/* End Date */}
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <Input
+                type="datetime-local"
+                value={newEndDate}
+                onChange={(e) => setNewEndDate(e.target.value)}
+              />
+            </div>
+            {/* Deadline Date */}
+            <div className="space-y-2">
+              <Label>Deadline Date</Label>
+              <Input
+                type="datetime-local"
+                value={newDeadlineDate}
+                onChange={(e) => setNewDeadlineDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsTimelineDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateTimeline}>Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ProjectSettingsDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        isOpen={isSettingsDialogOpen}
+        onClose={() => setIsSettingsDialogOpen(false)}
         project={project}
       />
     </>

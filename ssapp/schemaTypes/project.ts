@@ -130,18 +130,38 @@ export default defineType({
               title: 'Quantity',
               type: 'number',
               initialValue: 0,
-              description: 'Quantity of this material used for the project',
+              description: 'Quantity of this material really used for the project',
+            },
+            {
+              name: 'quantityForFirm',
+              title: 'Quantity For Firm',
+              type: 'number',
+              description: 'Quantity of this material we send for the firm',
             },
             {
               name: 'id',
               title: 'ID',
               type: 'string',
               description: 'Unique ID for this material',
-              initialValue: () => nanoid(), // Generate unique ID on creation
-              readOnly: true, // Optional: prevent manual editing
-              validation: (Rule) => Rule.required(), // Optional: ensure ID exists
+              initialValue: () => nanoid(),
+              readOnly: true,
+              validation: (Rule) => Rule.required(),
             },
           ],
+          preview: {
+            select: {
+              title: 'material.name',
+              quantity: 'quantity',
+              quantityForFirm: 'quantityForFirm',
+            },
+            prepare(selection) {
+              const {title, quantity, quantityForFirm} = selection
+              return {
+                title: title,
+                subtitle: `Quantity: ${quantity} | Quantity for Firm: ${quantityForFirm}`,
+              }
+            },
+          },
         }),
       ],
       description: 'List of materials and their quantities for this project',
@@ -180,6 +200,19 @@ export default defineType({
               description: 'Details or description of the event',
             },
           ],
+          preview: {
+            select: {
+              time: 'time',
+              author: 'author.name',
+            },
+            prepare(selection) {
+              const {time, author} = selection
+              return {
+                title: author ? `By ${author}` : 'No author',
+                subtitle: `At ${new Date(time).toLocaleString()}`,
+              }
+            },
+          },
         }),
       ],
       description: 'Chronological log of major steps, updates, or notes for this project',
@@ -207,8 +240,22 @@ export default defineType({
               validation: (Rule) => Rule.min(0).required(),
             },
           ],
+          preview: {
+        select: {
+          title: 'description',
+          subtitle: 'amount',
+        },
+        prepare(selection) {
+          const {title, subtitle} = selection
+          return {
+            title: title,
+            subtitle: `Amount: ${subtitle} zl`,
+          }
+        },
+      },
         },
       ],
+      
     }),
     // totalCost
     defineField({

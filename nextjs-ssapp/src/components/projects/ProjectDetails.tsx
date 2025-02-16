@@ -3,7 +3,7 @@
 import { ProjectDashboard } from "./ProjectDashboard";
 import { ProjectTabs } from "./ProjectTabs";
 
-export function ProjectDetails({ project }: { project: any }) {
+export function ProjectDetails() {
   return (
     <div className="flex-1 space-y-4 p-1 pt-6">
       <ProjectDashboard />
