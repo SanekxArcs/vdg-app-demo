@@ -19,13 +19,13 @@ export function ProjectTabs({ project }: { project: any }) {
 
       {/* Tab content: each imported component handles its own rendering */}
       <TabsContent value="overview">
-        <ProjectOverview project={project} />
+        <ProjectOverview />
       </TabsContent>
       <TabsContent value="materials">
-        <ProjectMaterials project={project} />
+        <ProjectMaterials/>
       </TabsContent>
       <TabsContent value="timeline">
-        <ProjectTimeline project={project} />
+        <ProjectTimeline/>
       </TabsContent>
       <TabsContent value="costs">
         <ProjectCosts project={project} />

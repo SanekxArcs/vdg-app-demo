@@ -23,48 +23,97 @@ import {
 import { Plus } from "lucide-react";
 import { client } from "@/sanity/client";
 import { nanoid } from "nanoid";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
+import { groq } from "next-sanity";
+
+// Define interfaces for the used material and project data
+interface UsedMaterial {
+  _key: string;
+  quantity: number;
+  id: string;
+  material: {
+    name: string;
+    priceNetto: number;
+    unit: { name: string };
+    pieces: number;
+  } | null;
+}
 
 interface ProjectType {
   _id: string;
-  materials: {
-    material?: {
-      name?: string;
-      priceNetto?: number;
-      unit?: { name?: string };
-      pieces?: number; // ✅ Add pieces inside material
-    } | null;
-    quantity?: number;
-  }[];
+  materials: UsedMaterial[];
 }
 
-// ...existing code...
 interface Material {
   _id: string;
   name: string;
 }
 
-export function ProjectMaterials({ project }: { project: ProjectType }) {
-    const router = useRouter();
+export function ProjectMaterials() {
+  const router = useRouter();
+  const { id } = useParams() as { id: string };
 
-  // Local state for the "Add Material" form
+  // Local state for project data, loading flag, and form fields
+  const [project, setProject] = useState<ProjectType | null>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [materialQuantity, setMaterialQuantity] = useState("");
   const [allMaterials, setAllMaterials] = useState<Material[]>([]);
 
+  // GROQ query to load only necessary fields for the project's materials
+  const projectQuery = groq`
+    *[_type=="project" && _id==$id][0]{
+      _id,
+      materials[] {
+        _key,
+        quantity,
+        id,
+        material-> {
+          name,
+          priceNetto,
+          unit->{name},
+          pieces
+        }
+      }
+    }
+  `;
+
+  // Fetch project materials from Sanity
+  const fetchProject = async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const data = await client.fetch(projectQuery, { id });
+      setProject(data);
+    } catch (error) {
+      console.error("Error fetching project data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load project data on mount and refresh every 60 seconds
+  useEffect(() => {
+    if (!id) return;
+    fetchProject();
+    const interval = setInterval(fetchProject, 60000);
+    return () => clearInterval(interval);
+  }, [id]);
+
+  // Fetch all available materials for the selection dropdown
   useEffect(() => {
     client
-      .fetch<Material[]>(`*[_type == "material"]{_id, name}`)
+      .fetch<Material[]>(`*[_type == "material"]{ _id, name }`)
       .then((data) => setAllMaterials(data))
       .catch(console.error);
   }, []);
 
+  // Handle adding a new material to the project
   const handleAddMaterial = async () => {
     if (!selectedMaterial || !materialQuantity || !project?._id) return;
-
     try {
       await client
-        .patch(project._id) 
+        .patch(project._id)
         .setIfMissing({ materials: [] })
         .append("materials", [
           {
@@ -80,16 +129,19 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
         ])
         .commit();
 
+      // Reset form fields and refresh project data
       setSelectedMaterial("");
       setMaterialQuantity("");
+      fetchProject();
       router.refresh();
-
       console.log("Material added to project");
     } catch (err) {
       console.error("Error adding material:", err);
     }
   };
 
+  // Display a loading state until project data is available
+  if (loading || !project) return <p>Loading project materials...</p>;
 
   return (
     <Card>
@@ -107,24 +159,25 @@ export function ProjectMaterials({ project }: { project: ProjectType }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {project?.materials?.map((mat, index) => {
-              // Optional chaining to safely access nested fields
+            {project.materials.map((mat) => {
               const materialName = mat.material?.name || "N/A";
               const quantity = mat.quantity ?? 0;
               const priceNetto = mat.material?.priceNetto ?? 0;
               const unitName = mat.material?.unit?.name || "";
               const pieces = mat.material?.pieces || 1;
+              const totalPrice = (
+                (quantity / pieces) *
+                priceNetto
+              ).toLocaleString();
 
               return (
-                <TableRow key={index} className="p-1">
+                <TableRow key={mat._key} className="p-1">
                   <TableCell className="p-1">{materialName}</TableCell>
                   <TableCell className="p-1">
                     {quantity} {unitName}
                   </TableCell>
                   <TableCell className="p-1">{priceNetto} zl</TableCell>
-                  <TableCell className="p-1">
-                    {((quantity / pieces) * priceNetto).toLocaleString()} zl
-                  </TableCell>
+                  <TableCell className="p-1">{totalPrice} zl</TableCell>
                 </TableRow>
               );
             })}

@@ -7,7 +7,6 @@ import { client } from "@/sanity/client";
 import { Layout } from "@/components/layout/layout";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
 
-// Define TypeScript interface for Project data
 interface Project {
   _id: string;
   number: number;
@@ -45,17 +44,14 @@ interface Project {
 }
 
 export default function ProjectPage() {
-  // Retrieve the project id from the URL params
   const { id } = useParams() as { id: string };
 
-  // State for storing the project data and loading status
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     if (!id) return;
 
-    // GROQ query to fetch the project data and flatten nested objects
     const query = groq`
       *[_type == "project" && _id == $id][0]{
         _id,
@@ -89,7 +85,6 @@ export default function ProjectPage() {
       }
     `;
 
-    // Fetch project data from Sanity
     client
       .fetch<Project>(query, { id })
       .then((fetchedProject) => {
@@ -103,19 +98,16 @@ export default function ProjectPage() {
       });
   }, [id]);
 
-  // Show loading state until data is fetched
   if (loading) {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
-  // Show an error message if no project is found
   if (!project) {
     return <div className="p-8 text-center">Project not found.</div>;
   }
 
   return (
     <Layout>
-      {/* Pass the fetched project data to the ProjectDetails component */}
       <ProjectDetails project={project} />
     </Layout>
   );

@@ -13,37 +13,60 @@ import {
   Settings,
 } from "lucide-react";
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
-import { StatusSelector } from "./StatusSelector"; // Import the new component
+import { client } from "@/sanity/client";
+import { groq } from "next-sanity";
+import { useParams } from "next/navigation";
 
-interface Status {
-  _id: string;
-  name: string;
-}
+export function ProjectDashboard() {
+  // Get project id from URL params
+  const { id } = useParams() as { id: string };
 
-export function ProjectDashboard({ project }: { project: any }) {
+  // Local state for project data and dialog visibility
+  const [project, setProject] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false); // Control visibility of StatusSelector
-  const [statuses, setStatuses] = useState<Status[]>([]); // Store available statuses
-  const [selectedStatus, setSelectedStatus] = useState<Status>(project.status);
+  const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false);
 
+  // Sanity query to load only the necessary fields
+  const query = groq`
+    *[_type == "project" && _id == $id][0]{
+      _id,
+      number,
+      city,
+      address,
+      postal,
+      link,
+      startDate,
+      endDate,
+      deadlineDate,
+      totalBudget,
+      status-> { name },
+      ekipa-> { name },
+      firm-> { name }
+    }
+  `;
+
+  // Fetch project data from Sanity
+  const fetchProject = async () => {
+    try {
+      const data = await client.fetch(query, { id });
+      setProject(data);
+    } catch (error) {
+      console.error("Error fetching project data:", error);
+    }
+  };
+
+  // Load project data on mount and refresh every 60 seconds
   useEffect(() => {
-    // Fetch statuses from your data source (Sanity, API, etc.)
-    // Replace this with your actual data fetching logic
-    const fetchStatuses = async () => {
-      // Example using a local array:
-      const mockStatuses = [
-        { _id: "1", name: "Planned" },
-        { _id: "2", name: "In progress" },
-        { _id: "3", name: "On Hold" },
-        { _id: "4", name: "Completed" },
-      ];
-      setStatuses(mockStatuses);
-    };
+    if (!id) return;
+    fetchProject();
+    const interval = setInterval(fetchProject, 60000); // refresh every 60 sec
+    return () => clearInterval(interval);
+  }, [id]);
 
-    fetchStatuses();
-  }, []);
+  // Show a loading state until project data is available
+  if (!project) return <p>Loading project data...</p>;
 
-  // Format a date into a human-readable string
+  // Format a date for display
   const formatDate = (date: Date | string) =>
     new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
@@ -51,7 +74,7 @@ export function ProjectDashboard({ project }: { project: any }) {
       day: "numeric",
     });
 
-  // Build a Google Maps URL from the project address
+  // Build a Google Maps URL from the project address details
   const getGoogleMapsUrl = () => {
     const address = `${project.address}, ${project.city}, ${project.postal}`;
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -59,30 +82,8 @@ export function ProjectDashboard({ project }: { project: any }) {
     )}`;
   };
 
-  // Handler for status change
-  const handleStatusChange = async (newStatus: Status) => {
-    setSelectedStatus(newStatus);
-    setIsStatusSelectorOpen(false); // Close the selector
-
-    // Update the project status in your data source (Sanity, API, etc.)
-    // Replace this with your actual data updating logic
-    console.log("Updating status to:", newStatus);
-    // try {
-    //   await client
-    //     .patch(project._id)
-    //     .set({ status: newStatus })
-    //     .commit();
-    //   router.refresh();
-    //   toast.success("Status updated successfully");
-    // } catch (error) {
-    //   toast.error("Failed to update status");
-    //   console.error("Failed to update status:", error);
-    // }
-  };
-
   return (
     <>
-      {/* Header */}
       <div className="flex flex-col gap-5 md:flex-row items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -91,29 +92,21 @@ export function ProjectDashboard({ project }: { project: any }) {
             </h2>
             <Badge
               variant="outline"
-              className={` cursor-pointer
-                            ${
-                              selectedStatus.name === "Completed"
-                                ? "bg-green-100 text-green-800"
-                                : selectedStatus.name === "In progress"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : selectedStatus.name === "On Hold"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : selectedStatus.name === "Planned"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-gray-50 text-gray-600"
-                            }`}
-              onClick={() => setIsStatusSelectorOpen(!isStatusSelectorOpen)} // Open selector on click
+              className={`cursor-default ${
+                project.status.name === "Completed"
+                  ? "bg-green-100 text-green-800"
+                  : project.status.name === "In progress"
+                    ? "bg-blue-100 text-blue-800"
+                    : project.status.name === "On Hold"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : project.status.name === "Planned"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-50 text-gray-600"
+              }`}
+              onClick={() => setIsStatusSelectorOpen(!isStatusSelectorOpen)}
             >
-              {selectedStatus.name}
+              {project.status.name}
             </Badge>
-            {isStatusSelectorOpen && statuses.length > 0 && (
-              <StatusSelector
-                currentStatus={selectedStatus}
-                statuses={statuses}
-                onStatusChange={handleStatusChange}
-              />
-            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -121,7 +114,7 @@ export function ProjectDashboard({ project }: { project: any }) {
             <a
               href={project.link}
               target="_blanc"
-              className="flex items-center "
+              className="flex items-center"
             >
               <ExternalLink className="h-4 w-4 mr-1" />
               Project files
@@ -137,11 +130,10 @@ export function ProjectDashboard({ project }: { project: any }) {
         </div>
       </div>
 
-      {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Location Card */}
         <Card
-          className=" cursor-pointer hover:-translate-y-1 transition-all hover:shadow-xl"
+          className="cursor-pointer hover:-translate-y-1 transition-all hover:shadow-xl"
           onClick={() => window.open(getGoogleMapsUrl(), "_blank")}
         >
           <CardHeader className="flex items-center justify-between pb-2">
@@ -149,8 +141,7 @@ export function ProjectDashboard({ project }: { project: any }) {
             <MapPin className="text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="font-medium "></div>
-            <p className=" select-none text-center">
+            <p className="select-none text-center">
               {project.postal}, {project.city},<br /> {project.address}
             </p>
             <Button
@@ -163,6 +154,7 @@ export function ProjectDashboard({ project }: { project: any }) {
             </Button>
           </CardContent>
         </Card>
+
         {/* Timeline Card */}
         <Card>
           <CardHeader className="flex items-center justify-between pb-2">
@@ -171,15 +163,16 @@ export function ProjectDashboard({ project }: { project: any }) {
           </CardHeader>
           <CardContent>
             <div className="font-medium text-center">
-              Start:{formatDate(project.startDate)} <br />
+              Start: {formatDate(project.startDate)} <br />
               {project.endDate
-                ? "End:" + formatDate(project.endDate)
-                : "End date not set"}{" "}
+                ? "End: " + formatDate(project.endDate)
+                : "End date not set"}
               <br />
               Deadline: {formatDate(project.deadlineDate)}
             </div>
           </CardContent>
         </Card>
+
         {/* Budget Card */}
         <Card>
           <CardHeader className="flex items-center justify-between pb-2">
@@ -187,14 +180,13 @@ export function ProjectDashboard({ project }: { project: any }) {
             <DollarSign className="text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="font-medium  text-center">
+            <div className="font-medium text-center">
               {project.totalBudget.toLocaleString()} zl
             </div>
-            <p className="text-xs text-muted-foreground  text-center">
-              Total allocated
-            </p>
+            <p className="text-xs text-muted-foreground text-center">Total</p>
           </CardContent>
         </Card>
+
         {/* Team Card */}
         <Card>
           <CardHeader className="flex items-center justify-between pb-2">
@@ -204,13 +196,12 @@ export function ProjectDashboard({ project }: { project: any }) {
           <CardContent>
             <div className="font-medium text-center">{project.ekipa.name}</div>
             <p className="text-xs text-muted-foreground text-center">
-              {project.firm.name}
+              {project.firm?.name || ""}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Project Settings Dialog */}
       <ProjectSettingsDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}

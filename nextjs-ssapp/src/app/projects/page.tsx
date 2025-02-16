@@ -4,7 +4,6 @@
 import { useState, useEffect } from "react";
 import { groq } from "next-sanity";
 import Link from "next/link";
-
 import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-// Імпортуйте налаштований клієнт Sanity (приклад):
 import { client } from "@/sanity/client";
-import { Separator } from "@/components/ui/separator";
 
-// Тип для проєкту (пристосуйте під свої поля)
 type Project = {
   id: string;
   mpk: number;
@@ -46,16 +41,11 @@ type Project = {
 };
 
 export default function ProjectsPage() {
-  // Стан для масиву проєктів
   const [projects, setProjects] = useState<Project[]>([]);
-  // ОКРЕМІ стани для фільтра за статусом і фільтра за фірмою
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedFirm, setSelectedFirm] = useState<string>("all");
-  // Стан для пошуку
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // GROQ-запит, який завантажує список проєктів.
-  // Змінюйте поля згідно зі своєю схемою:
   const query = groq`
     *[_type == "project"] {
       "id": _id,
@@ -71,7 +61,6 @@ export default function ProjectsPage() {
     } | order(_createdAt desc)
   `;
 
-  // Завантаження даних з Sanity
   const fetchProjects = async () => {
     try {
       const data = await client.fetch(query);
@@ -83,21 +72,16 @@ export default function ProjectsPage() {
     }
   };
 
-  // Викликаємо fetchProjects при монтуванні компонента
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  // Фільтрація списку проєктів
   const filteredProjects = projects.filter((project) => {
-    // Порівняння статусу
     const matchesStatus =
       selectedStatus === "all" || project.status === selectedStatus;
 
-    // Фільтрація за фірмою
     const matchesFirm = selectedFirm === "all" || project.firm === selectedFirm;
 
-    // Пошук (назва або MPK)
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
       project.name.toLowerCase().includes(searchLower) ||
@@ -109,7 +93,6 @@ export default function ProjectsPage() {
   return (
     <Layout>
       <div className="flex-1 space-y-4 p-1 pt-6">
-        {/* Заголовок сторінки й кнопка створення нового проєкту */}
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Projects</h2>
           <Link href="/projects/new">
@@ -120,7 +103,6 @@ export default function ProjectsPage() {
           </Link>
         </div>
 
-        {/* Поле пошуку та селект для статусу та фірми */}
         <div className="flex items-center space-x-2">
           <Input
             placeholder="Search projects..."
@@ -129,7 +111,6 @@ export default function ProjectsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
 
-          {/* Перший селект – статус */}
           <Select onValueChange={(val) => setSelectedStatus(val)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
@@ -143,7 +124,6 @@ export default function ProjectsPage() {
             </SelectContent>
           </Select>
 
-          {/* Другий селект – фірма */}
           <Select onValueChange={(val) => setSelectedFirm(val)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Firm" />
@@ -158,13 +138,11 @@ export default function ProjectsPage() {
           </Select>
         </div>
 
-        {/* Таблиця з проєктами */}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>MPK</TableHead>
-
                 <TableHead>Address</TableHead>
                 <TableHead>Firm</TableHead>
                 <TableHead>Firm ID</TableHead>
@@ -175,32 +153,23 @@ export default function ProjectsPage() {
             </TableHeader>
             <TableBody>
               {filteredProjects.map((project) => {
-                // Колонка MPK № з індикацією дедлайну (кольорова смужка)
-                let textColorClass = "border-gray-300";
-                if (project.deadline) {
-                  const deadlineDate = new Date(project.deadline);
-                  const now = new Date();
-                  const diffInMs = deadlineDate.getTime() - now.getTime();
-                  const diffInDays = Math.floor(
-                    diffInMs / (1000 * 60 * 60 * 24)
-                  );
-
-                  if (diffInDays < 0) {
-                    textColorClass = "border-red-600";
-                  } else if (diffInDays <= 3) {
-                    textColorClass = "border-orange-600";
-                  } else {
-                    textColorClass = "border-green-600";
-                  }
-                }
-
                 return (
                   <TableRow key={project.id}>
-                    <TableCell className={`border-l-4 ${textColorClass}`}>
+                    <TableCell
+                      className={`border-l-2 cursor-default ${
+                        project.status === "Completed"
+                          ? "border-green-500"
+                          : project.status === "In progress"
+                            ? "border-blue-500"
+                            : project.status === "On Hold"
+                              ? "border-yellow-500"
+                              : project.status === "Planned"
+                                ? "border-yellow-500"
+                                : "border-gray-50/50"
+                      }`}
+                    >
                       {project.mpk}
                     </TableCell>
-
-                    {/* Адреса, клік для відриття в Google Maps */}
                     <TableCell
                       onClick={() =>
                         window.open(
@@ -219,13 +188,19 @@ export default function ProjectsPage() {
                     </TableCell>
 
                     <TableCell>
-                      <div className=" text-nowrap">{project.firm}</div>
+                      <div className=" text-nowrap cursor-default ">
+                        {project.firm}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <div className=" text-nowrap">{project.firmCode}</div>
+                      <div className=" text-nowrap cursor-default ">
+                        {project.firmCode}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <div className=" text-nowrap">{project.type}</div>
+                      <div className=" text-nowrap cursor-default ">
+                        {project.type}
+                      </div>
                     </TableCell>
 
                     <TableCell>
@@ -246,19 +221,15 @@ export default function ProjectsPage() {
                         {project.status}
                       </div>
                     </TableCell>
-
                     <TableCell>
                       <Link href={`/projects/${project.id}`}>
-                        <Button variant="outline">
-                          Open
-                        </Button>
+                        <Button variant="outline">Open</Button>
                       </Link>
                     </TableCell>
                   </TableRow>
                 );
               })}
 
-              {/* Якщо немає результатів після фільтра */}
               {filteredProjects.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-6">
