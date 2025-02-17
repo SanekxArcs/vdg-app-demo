@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Plus } from "lucide-react";
+import { ExternalLink, MapPin, Plus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -93,14 +93,27 @@ export default function ProjectsPage() {
   return (
     <Layout>
       <div className="flex-1 space-y-4 p-1 pt-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between ">
           <h2 className="text-3xl font-bold tracking-tight">Projects</h2>
+          <div className="flex items-center space-x-2">
+            <Button variant="secondary" className="w-full md:w-auto">
+            <a
+              href="https://quantaenergy1-my.sharepoint.com/:x:/r/personal/bartosz_sobczyk_quantaenergy_pl/_layouts/15/Doc.aspx?sourcedoc=%7Bff684d58-b132-4a5f-a423-79cafb43d1de%7D&action=default&CID=b9fdf414-09e9-4b20-93a6-95cde04d13b2&_SRM=2%3AE%3A8"
+              target="_blanc"
+              className="flex items-center"
+            >
+              <ExternalLink className="h-4 w-4 md:mr-1 " />
+              <span className="hidden md:block" >Projects Exel</span> 
+            </a>
+          </Button>
           <Link href="/projects/new">
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
+              <Plus className="md:mr-2 h-4 w-4" />
+              <span className="hidden md:block" >New Project</span>
             </Button>
           </Link>
+          </div>
+          
         </div>
 
         <div className="flex items-center space-x-2">
